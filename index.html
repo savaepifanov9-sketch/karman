@@ -169,6 +169,24 @@
   .stake-hero .big { font-size: 22px; font-weight: 800; }
   .stake-hero .apy { color: var(--up); font-weight: 700; }
 
+  /* ---- автотрейдер ---- */
+  .switch { width: 52px; height: 30px; border-radius: 15px; background: rgba(255,255,255,.1); position: relative; flex: none; transition: .2s; box-shadow: 0 1px 0 rgba(255,255,255,.08) inset, 0 2px 6px rgba(0,0,0,.6) inset; }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #b9bcc7 70%); box-shadow: 0 3px 8px rgba(0,0,0,.6); transition: .2s; }
+  .switch.on { background: linear-gradient(160deg, #5cf0b0, #22c47c); box-shadow: 0 0 20px rgba(52,229,154,.45); }
+  .switch.on::after { left: 25px; }
+  .param { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 14px; border-bottom: 1px solid var(--line); }
+  .param:last-child { border-bottom: 0; }
+  .param .k { color: var(--muted); font-size: 13px; }
+  .param input { width: 92px; background: rgba(0,0,0,.45); border: 0; outline: 0; border-radius: 10px; padding: 8px 10px; text-align: right; font-weight: 600; box-shadow: 0 1px 0 rgba(255,255,255,.06) inset; }
+  .coinsel { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 14px; }
+  .coinsel button { display: flex; align-items: center; gap: 6px; padding: 6px 10px 6px 6px; border-radius: 999px; background: rgba(255,255,255,.05); font-size: 13px; font-weight: 600; opacity: .45; box-shadow: 0 1px 0 rgba(255,255,255,.06) inset; }
+  .coinsel button.on { opacity: 1; background: rgba(79,140,255,.15); box-shadow: 0 0 0 1px rgba(79,140,255,.4) inset; }
+  .kpi { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; padding: 6px 0 12px; }
+  .kpi .v { font-size: 18px; font-weight: 800; }
+  .kpi .k { color: var(--muted); font-size: 11.5px; }
+  .pulse { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--up); box-shadow: 0 0 10px var(--up); animation: pulse 1.6s ease-in-out infinite; margin-right: 6px; vertical-align: middle; }
+  @keyframes pulse { 50% { opacity: .35; } }
+
   /* ---- настройки ---- */
   .seg { display: flex; background: rgba(0,0,0,.45); border-radius: 12px; padding: 3px; }
   .seg button { flex: 1; padding: 8px; border-radius: 10px; font-size: 13px; font-weight: 600; color: var(--muted); }
@@ -182,7 +200,7 @@
 
   /* ---- таббар ---- */
   .tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; padding: 0 12px calc(10px + var(--safe-b)); pointer-events: none; }
-  .tabbar .in { pointer-events: auto; max-width: 480px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr);
+  .tabbar .in { pointer-events: auto; max-width: 480px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr);
     background: linear-gradient(180deg, rgba(28,28,34,.92), rgba(10,10,13,.95)); backdrop-filter: blur(18px); border-radius: 22px;
     box-shadow: 0 20px 40px -14px rgba(0,0,0,1), 0 0 0 1px rgba(255,255,255,.08), 0 1px 0 rgba(255,255,255,.1) inset; }
   .tab { padding: 10px 0 9px; text-align: center; color: var(--muted); font-size: 11px; font-weight: 600; border-radius: 18px; }
@@ -254,6 +272,25 @@
     <div class="card num" id="c-stats"></div>
   </section>
 
+  <!-- ===== Автотрейдер ===== -->
+  <section class="screen" id="s-bot">
+    <div class="section" style="margin-top:4px"><span>🤖 Автотрейдер</span><span class="muted" style="text-transform:none;letter-spacing:0;font-weight:500">демо-счёт</span></div>
+    <div class="card" id="bot-status"></div>
+    <div class="section"><span>Стратегия</span></div>
+    <div class="card" id="bot-settings"></div>
+    <div class="section"><span>Проверка на истории</span></div>
+    <div class="card" id="bot-backtest"><div class="empty">Прогони стратегию на реальных ценах за последние 30 дней, прежде чем включать.</div></div>
+    <button class="btn ghost" style="width:100%;margin-bottom:14px" id="bot-bt-btn" onclick="runBacktest()">📊 Проверить за 30 дней</button>
+    <div class="section"><span>Партии бота</span></div>
+    <div class="card" id="bot-lots"></div>
+    <div class="section"><span>Журнал</span></div>
+    <div class="card" id="bot-log"></div>
+    <p class="muted" style="font-size:12px;text-align:center;margin-top:6px;line-height:1.6">
+      Бот торгует, пока приложение открыто, и досчитывает пропущенное время по реальной истории цен при следующем открытии.
+      Прошлый результат ничего не гарантирует — это тренажёр.
+    </p>
+  </section>
+
   <!-- ===== История ===== -->
   <section class="screen" id="s-history">
     <div class="section" style="margin-top:4px"><span>История</span></div>
@@ -287,6 +324,7 @@
 <nav class="tabbar"><div class="in">
   <button class="tab on" data-tab="wallet" onclick="go('wallet')"><span class="ic">👛</span>Кошелёк</button>
   <button class="tab" data-tab="market" onclick="go('market')"><span class="ic">📈</span>Рынок</button>
+  <button class="tab" data-tab="bot" onclick="go('bot')"><span class="ic">🤖</span>Бот</button>
   <button class="tab" data-tab="history" onclick="go('history')"><span class="ic">🧾</span>История</button>
   <button class="tab" data-tab="settings" onclick="go('settings')"><span class="ic">⚙️</span>Настройки</button>
 </div></nav>
@@ -315,6 +353,19 @@ const CUR = { usd: "$", rub: "₽", eur: "€" };
 const STORAGE_KEY = "karman-v1";
 const PRICE_TTL = 60e3, CHART_TTL = 300e3;
 
+/* стратегии автотрейдера; параметры — проценты */
+const STRATS = {
+  dip:   { name: "Откат",  desc: "Покупает, когда цена падает ниже средней за сутки на заданный процент. Продаёт по тейк-профиту или стоп-лоссу.",
+           params: [["dip", "Просадка для входа, %", 2.5], ["tp", "Тейк-профит, %", 3], ["sl", "Стоп-лосс, %", 4]] },
+  trend: { name: "Тренд",  desc: "Покупает, когда быстрая средняя (6ч) пересекает медленную (24ч) снизу вверх. Продаёт при обратном пересечении или стоп-лоссе.",
+           params: [["sl", "Стоп-лосс, %", 5]] },
+  grid:  { name: "Сетка",  desc: "Покупает партию на каждом шаге падения и продаёт каждую партию, как только она даёт заданный процент.",
+           params: [["step", "Шаг сетки, %", 2], ["maxLots", "Партий на монету, шт", 4]] },
+};
+const BOT_DEFAULT = { on: false, strategy: "dip", budget: 3000, perTrade: 300, coins: ["TON", "BTC", "ETH", "SOL"],
+                      params: { dip: 2.5, tp: 3, sl: 4, step: 2, maxLots: 4 }, lastTick: 0, spent: 0, lots: {}, log: [],
+                      stats: { trades: 0, wins: 0, pnl: 0 } };
+
 const tg = window.Telegram && Telegram.WebApp && Telegram.WebApp.initData !== undefined ? Telegram.WebApp : null;
 
 let state = load();
@@ -330,8 +381,11 @@ function genAddress() {
 }
 function load() {
   const base = { cash: START_CASH, holdings: {}, trades: [], settings: { currency: "usd", days: 7 },
-                 address: genAddress(), stake: null, topups: 0, created: Date.now() };
-  try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) return Object.assign(base, JSON.parse(raw)); } catch (e) {}
+                 address: genAddress(), stake: null, topups: 0, bot: null, created: Date.now() };
+  try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) Object.assign(base, JSON.parse(raw)); } catch (e) {}
+  // Бот появился позже кошелька: у старых сохранений его нет, у новых могут не хватать полей.
+  base.bot = Object.assign(JSON.parse(JSON.stringify(BOT_DEFAULT)), base.bot || {});
+  base.bot.params = Object.assign({}, BOT_DEFAULT.params, base.bot.params);
   return base;
 }
 function save() {
@@ -372,16 +426,24 @@ async function fetchBoard(force) {
   }
   return board;
 }
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function fetchChart(sym, d) {
-  const k = `${sym}:${d}`, c = charts[k];
+  const k = `${sym}:${d}`;
+  let c = charts[k];
+  if (!c) { try { c = charts[k] = JSON.parse(localStorage.getItem(STORAGE_KEY + ":chart:" + k)); } catch (e) {} }
   if (c && Date.now() - c.at < CHART_TTL) return c.points;
-  try {
-    const r = await fetch(`${API}/coins/${BY[sym].id}/market_chart?vs_currency=usd&days=${d}`);
-    if (!r.ok) throw new Error(r.status);
-    const j = await r.json();
-    charts[k] = { at: Date.now(), points: j.prices.map(([t, p]) => [t, p]) };
-    return charts[k].points;
-  } catch (e) { return c ? c.points : null; }
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const r = await fetch(`${API}/coins/${BY[sym].id}/market_chart?vs_currency=usd&days=${d}`);
+      if (r.status === 429) { await sleep(2500 * (attempt + 1)); continue; }   // лимит CoinGecko — подождать и повторить
+      if (!r.ok) throw new Error(r.status);
+      const j = await r.json();
+      charts[k] = { at: Date.now(), points: j.prices.map(([t, p]) => [t, p]) };
+      try { localStorage.setItem(STORAGE_KEY + ":chart:" + k, JSON.stringify(charts[k])); } catch (e) {}
+      return charts[k].points;
+    } catch (e) { break; }
+  }
+  return c ? c.points : null;
 }
 function price(sym) { return sym === "USD" ? 1 : (board && board.quotes[sym] ? board.quotes[sym].usd : 0); }
 
@@ -479,26 +541,31 @@ function takeHolding(sym, amount) {
   if (all) delete state.holdings[sym]; else { h.amount -= amount; h.invested -= cost; }
   return cost;
 }
-function log(t) { state.trades.unshift(Object.assign({ at: Date.now() }, t)); save(); }
+function log(t) {
+  state.trades.unshift(Object.assign({ at: Date.now() }, t));
+  state.trades.sort((a, b) => b.at - a.at);   // досчёт истории ботом вставляет сделки «в прошлое»
+  save();
+}
 
-function buy(sym, usd) {
-  const p = price(sym); if (!p) return "Нет цены.";
+/* o: { price, at, bot, note } — переопределения для автотрейдера, вручную не нужны */
+function buy(sym, usd, o = {}) {
+  const p = o.price || price(sym); if (!p) return "Нет цены.";
   if (!(usd >= MIN_TRADE)) return `Минимальная сделка — $${MIN_TRADE}.`;
   if (usd > state.cash + 1e-9) return `Не хватает ${money(usd - state.cash)}.`;
   usd = Math.min(usd, state.cash);
   const amount = usd / p;
   state.cash -= usd; addHolding(sym, amount, usd);
-  log({ side: "buy", s: sym, amount, price: p, total: usd }); return null;
+  log({ side: "buy", s: sym, amount, price: p, total: usd, at: o.at || Date.now(), bot: !!o.bot, note: o.note }); return null;
 }
-function sell(sym, amount) {
-  const p = price(sym); if (!p) return "Нет цены.";
+function sell(sym, amount, o = {}) {
+  const p = o.price || price(sym); if (!p) return "Нет цены.";
   const h = state.holdings[sym];
   if (h && amount >= h.amount * (1 - 1e-8)) amount = h.amount;
   const total = amount * p;
   if (h && total < MIN_TRADE && amount < h.amount) return `Минимальная сделка — $${MIN_TRADE}.`;
   const cost = takeHolding(sym, amount); if (typeof cost === "string") return cost;
   state.cash += total;
-  log({ side: "sell", s: sym, amount, price: p, total, pnl: total - cost }); return null;
+  log({ side: "sell", s: sym, amount, price: p, total, pnl: total - cost, at: o.at || Date.now(), bot: !!o.bot, note: o.note }); return null;
 }
 function swap(from, to, amount) {
   if (from === to) return "Выбери разные активы.";
@@ -541,6 +608,161 @@ function unstake() {
   state.stake = null; save(); return null;
 }
 
+/* ---------------- автотрейдер ----------------
+   Стратегия смотрит на ряд цен (почасовые точки за 7 дней + текущая) и говорит acct, что делать.
+   acct — адаптер счёта: реальный (state) или симуляция (бэктест); стратегия о разнице не знает. */
+function ma(arr, n) { const s = arr.slice(-n); return s.reduce((a, b) => a + b, 0) / s.length; }
+
+function evaluate(bot, acct, sym, series, p, t) {
+  const P = bot.params, lots = acct.lots[sym] || [];
+  if (bot.strategy === "dip") {
+    if (!lots.length) {
+      if (series.length < 24) return;
+      const m = ma(series, 24), drop = (m - p) / m * 100;
+      if (drop >= P.dip) acct.buy(sym, bot.perTrade, p, t, `цена на ${drop.toFixed(1)}% ниже средней за сутки`);
+    } else {
+      const lot = lots[0], ch = (p - lot.entry) / lot.entry * 100;
+      if (ch >= P.tp) acct.sell(sym, lot, p, t, `тейк-профит +${ch.toFixed(1)}%`);
+      else if (ch <= -P.sl) acct.sell(sym, lot, p, t, `стоп-лосс ${ch.toFixed(1)}%`);
+    }
+  } else if (bot.strategy === "trend") {
+    if (series.length < 25) return;
+    const prev = series.slice(0, -1);
+    const fast = ma(series, 6), slow = ma(series, 24), pf = ma(prev, 6), ps = ma(prev, 24);
+    if (!lots.length) {
+      if (fast > slow && pf <= ps) acct.buy(sym, bot.perTrade, p, t, "быстрая средняя пересекла медленную вверх");
+    } else {
+      const lot = lots[0], ch = (p - lot.entry) / lot.entry * 100;
+      if (fast < slow && pf >= ps) acct.sell(sym, lot, p, t, `тренд развернулся (${ch >= 0 ? "+" : ""}${ch.toFixed(1)}%)`);
+      else if (ch <= -P.sl) acct.sell(sym, lot, p, t, `стоп-лосс ${ch.toFixed(1)}%`);
+    }
+  } else if (bot.strategy === "grid") {
+    for (const lot of lots.slice()) {
+      const ch = (p - lot.entry) / lot.entry * 100;
+      if (ch >= P.step) acct.sell(sym, lot, p, t, `партия закрыта +${ch.toFixed(1)}%`);
+    }
+    const open = acct.lots[sym] || [];
+    if (open.length >= P.maxLots) return;
+    const lowest = open.length ? Math.min(...open.map(l => l.entry)) : null;
+    if (lowest === null) acct.buy(sym, bot.perTrade, p, t, "первая партия сетки");
+    else if (p <= lowest * (1 - P.step / 100)) acct.buy(sym, bot.perTrade, p, t, `шаг сетки вниз −${((lowest - p) / lowest * 100).toFixed(1)}%`);
+  }
+}
+
+/* Адаптер над настоящим демо-счётом. */
+function realAcct(bot) {
+  return {
+    lots: bot.lots,
+    buy(sym, usd, p, t, reason) {
+      if (bot.spent + usd > bot.budget + 1e-9) return;
+      usd = Math.min(usd, state.cash);
+      if (usd < MIN_TRADE) return;
+      if (buy(sym, usd, { price: p, at: t, bot: true, note: reason })) return;
+      (bot.lots[sym] = bot.lots[sym] || []).push({ amount: usd / p, entry: p, invested: usd, at: t });
+      bot.spent += usd;
+      botLog(bot, { at: t, side: "buy", s: sym, usd, price: p, reason });
+    },
+    sell(sym, lot, p, t, reason) {
+      const list = bot.lots[sym] || [];
+      const amount = Math.min(lot.amount, balanceOf(sym));   // пользователь мог продать часть руками
+      list.splice(list.indexOf(lot), 1); if (!list.length) delete bot.lots[sym];
+      bot.spent = Math.max(0, bot.spent - lot.invested);
+      if (amount <= 0) return;
+      if (sell(sym, amount, { price: p, at: t, bot: true, note: reason })) return;
+      const pnl = amount * p - lot.invested * (amount / lot.amount);
+      bot.stats.trades++; if (pnl > 0) bot.stats.wins++; bot.stats.pnl += pnl;
+      botLog(bot, { at: t, side: "sell", s: sym, usd: amount * p, price: p, reason, pnl });
+    },
+  };
+}
+function botLog(bot, e) { bot.log.unshift(e); if (bot.log.length > 60) bot.log.length = 60; }
+
+/* Адаптер-симуляция для бэктеста: свой кэш и партии, ничего не трогает в state. */
+function simAcct(bot) {
+  const a = { cash: bot.budget, spent: 0, lots: {}, trades: 0, wins: 0, pnl: 0, log: [] };
+  a.buy = (sym, usd, p, t, reason) => {
+    if (a.spent + usd > bot.budget + 1e-9 || usd > a.cash) return;
+    a.cash -= usd; a.spent += usd;
+    (a.lots[sym] = a.lots[sym] || []).push({ amount: usd / p, entry: p, invested: usd, at: t });
+    a.log.push({ at: t, side: "buy", s: sym, usd, price: p, reason });
+  };
+  a.sell = (sym, lot, p, t, reason) => {
+    const list = a.lots[sym]; list.splice(list.indexOf(lot), 1); if (!list.length) delete a.lots[sym];
+    const got = lot.amount * p, pnl = got - lot.invested;
+    a.cash += got; a.spent -= lot.invested; a.trades++; if (pnl > 0) a.wins++; a.pnl += pnl;
+    a.log.push({ at: t, side: "sell", s: sym, usd: got, price: p, reason, pnl });
+  };
+  return a;
+}
+
+/* Один проход: для каждой монеты берём точки после lastTick (+ текущая цена) и прогоняем стратегию. */
+let botBusy = false;
+async function botTick() {
+  const bot = state.bot;
+  if (!bot.on || botBusy || !board) return;
+  botBusy = true;
+  try {
+    const acct = realAcct(bot), now = Date.now();
+    let acted = bot.log.length;
+    bot.last = bot.last || {};   // докуда досчитано, по каждой монете: история могла не загрузиться только для одной
+    for (const sym of bot.coins) {
+      const since = bot.last[sym] || bot.lastTick;
+      const pts = await fetchChart(sym, 7); if (!pts || !board.quotes[sym]) continue;
+      const series = pts.map(p => p[1]), times = pts.map(p => p[0]);
+      series.push(board.quotes[sym].usd); times.push(now);
+      for (let i = 0; i < series.length; i++) {
+        if (times[i] <= since) continue;
+        evaluate(bot, acct, sym, series.slice(0, i + 1), series[i], times[i]);
+      }
+      bot.last[sym] = now;
+    }
+    save();
+    if (bot.log.length !== acted) { render(); if (screen !== "bot") toast(`🤖 ${bot.log.length - acted} новых сделок бота`); }
+  } finally { botBusy = false; }
+}
+
+/* Бэктест: 30 дней почасовых точек по всем монетам бота, единая лента по времени. */
+async function backtest() {
+  const bot = state.bot, acct = simAcct(bot), events = [], hist = {};
+  for (const sym of bot.coins) {
+    const pts = await fetchChart(sym, 30); if (!pts) continue;
+    hist[sym] = pts.map(p => p[1]);
+    pts.forEach(([t, p], i) => events.push([t, sym, p, i]));
+  }
+  if (!events.length) return null;
+  events.sort((a, b) => a[0] - b[0]);
+  for (const [t, sym, p, i] of events) evaluate(bot, acct, sym, hist[sym].slice(0, i + 1), p, t);
+  // незакрытые партии оцениваем по последней цене
+  let open = 0;
+  for (const [sym, lots] of Object.entries(acct.lots)) for (const l of lots) open += l.amount * hist[sym][hist[sym].length - 1] - l.invested;
+  // сравнение: те же деньги поровну в те же монеты на весь срок
+  const held = bot.coins.filter(s => hist[s]).reduce((sum, s) => sum + bot.budget / bot.coins.length * (hist[s][hist[s].length - 1] / hist[s][0] - 1), 0);
+  return { pnl: acct.pnl + open, realized: acct.pnl, open, trades: acct.trades, wins: acct.wins, held, log: acct.log.slice(-8).reverse(),
+           from: events[0][0], to: events[events.length - 1][0] };
+}
+
+function botToggle(on) {
+  const bot = state.bot;
+  bot.on = on;
+  if (on) { bot.lastTick = Date.now(); bot.last = {}; save(); haptic("success"); toast("Бот запущен"); botTick(); }
+  else { save(); haptic("light"); toast("Бот остановлен — открытые партии остаются в кошельке"); }
+  render();
+}
+function botCloseAll() {
+  const bot = state.bot, acct = realAcct(bot);
+  for (const [sym, lots] of Object.entries(bot.lots)) for (const lot of lots.slice()) acct.sell(sym, lot, price(sym), Date.now(), "закрыто вручную");
+  save(); haptic("light"); toast("Партии бота закрыты"); render();
+}
+function botSet(key, value) {
+  const bot = state.bot;
+  if (key in bot.params) { const v = parseNum(value); if (v > 0) bot.params[key] = v; }
+  else if (key === "budget" || key === "perTrade") { const v = parseNum(value); if (v >= MIN_TRADE) bot[key] = v; }
+  else if (key === "strategy") bot.strategy = value;
+  else if (key === "coin") { const i = bot.coins.indexOf(value); i >= 0 ? (bot.coins.length > 1 && bot.coins.splice(i, 1)) : bot.coins.push(value); }
+  if (bot.perTrade > bot.budget) bot.perTrade = bot.budget;
+  save(); render();
+}
+
 /* ---------------- навигация ---------------- */
 function go(name) {
   if (name !== "coin") prevScreen = screen === "coin" ? prevScreen : screen;
@@ -560,6 +782,7 @@ function render() {
   if (screen === "wallet") renderWallet(p);
   if (screen === "market") renderMarket();
   if (screen === "coin") renderCoin();
+  if (screen === "bot") renderBot();
   if (screen === "history") renderHistory();
   if (screen === "settings") renderSettings(p);
 }
@@ -587,6 +810,11 @@ function renderWallet(p) {
     : `<button class="row" onclick="openStake()"><div class="coin" style="--c1:#0a6fc2;--c2:#5ec8ff"><span>🔒</span></div>
          <div class="main"><div class="t">Стейкинг TON</div><div class="s">Положи монеты под ${(STAKE_APY * 100).toFixed(1)}% годовых</div></div>
          <div class="side"><div class="t muted">›</div></div></button>`;
+  const bot = state.bot;
+  const botPnl = bot.stats.pnl + Object.entries(bot.lots).reduce((sum, [s, lots]) => sum + lots.reduce((a, l) => a + l.amount * price(s) - l.invested, 0), 0);
+  document.getElementById("stake-card").innerHTML += `<button class="row" onclick="go('bot')"><div class="coin" style="--c1:#3a2a8a;--c2:#a56bff"><span>🤖</span></div>
+    <div class="main"><div class="t">Автотрейдер</div><div class="s">${bot.on ? `Работает · ${STRATS[bot.strategy].name} · ${bot.stats.trades} сделок` : "Выключен — стратегии, бэктест, автоторговля"}</div></div>
+    <div class="side num"><div class="t">${bot.on ? signed(botPnl) : '<span class="muted">›</span>'}</div></div></button>`;
 }
 function renderMarket() {
   document.getElementById("market-sub").textContent = board ? `обновлено ${new Date(board.at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}` : "";
@@ -627,7 +855,7 @@ function renderHistory() {
   el.innerHTML = state.trades.slice(0, 60).map(t => {
     const [name, ic] = SIDE[t.side] || [t.side, "•"];
     const when = new Date(t.at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-    let title = `${name} ${t.s === "USD" ? "USD" : BY[t.s].name}`, sub = `${qty(t.s, t.amount)} · ${when}`, right = money(t.total), rsub = "";
+    let title = `${t.bot ? "🤖 " : ""}${name} ${t.s === "USD" ? "USD" : BY[t.s].name}`, sub = `${qty(t.s, t.amount)} · ${when}`, right = money(t.total), rsub = "";
     if (t.side === "swap") { title = `Обмен ${t.s} → ${t.to}`; sub = `${qty(t.s, t.amount)} → ${qty(t.to, t.got)} · ${when}`; rsub = t.s !== "USD" ? signed(t.pnl) : ""; }
     if (t.side === "sell") { right = "+" + right; rsub = signed(t.pnl); }
     if (t.side === "buy" || t.side === "send") right = "−" + right;
@@ -648,11 +876,70 @@ function renderSettings(p) {
   document.getElementById("st-topups").textContent = `${state.topups || 0} × ${money(TOPUP)}`;
   document.getElementById("st-result").innerHTML = board ? signed(p.total - START_CASH - (state.topups || 0) * TOPUP) : "—";
 }
+function renderBot() {
+  const bot = state.bot, S = STRATS[bot.strategy];
+  let openPnl = 0, lotsHtml = "", openCount = 0;
+  for (const [sym, lots] of Object.entries(bot.lots)) for (const l of lots) {
+    const p = price(sym), pnl = l.amount * p - l.invested, ch = (p - l.entry) / l.entry * 100;
+    openPnl += pnl; openCount++;
+    lotsHtml += `<div class="row">${icon(sym)}<div class="main"><div class="t">${BY[sym].name}</div>
+      <div class="s num">${qty(sym, l.amount)} · вход ${money(l.entry)} · ${new Date(l.at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</div></div>
+      <div class="side num"><div class="t">${money(l.amount * p)}</div><div class="s">${signed(pnl)} (${ch >= 0 ? "+" : ""}${ch.toFixed(1)}%)</div></div></div>`;
+  }
+  const total = bot.stats.pnl + openPnl, wr = bot.stats.trades ? Math.round(bot.stats.wins / bot.stats.trades * 100) : 0;
+  document.getElementById("bot-status").innerHTML = `
+    <div class="row" style="border-bottom:1px solid var(--line)"><div class="main"><div class="t">${bot.on ? '<span class="pulse"></span>Работает' : "Выключен"} · ${S.name}</div>
+      <div class="s">Бюджет ${money(bot.budget)} · в позициях ${money(bot.spent)} · по ${money(bot.perTrade)} за сделку</div></div>
+      <button class="switch ${bot.on ? "on" : ""}" onclick="botToggle(${!bot.on})" aria-label="Вкл/выкл"></button></div>
+    <div class="kpi num"><div><div class="v">${signed(total)}</div><div class="k">итог бота</div></div>
+      <div><div class="v">${bot.stats.trades}</div><div class="k">закрыто сделок</div></div>
+      <div><div class="v">${wr}%</div><div class="k">прибыльных</div></div></div>
+    ${openCount ? `<div style="padding:0 14px 12px"><button class="btn ghost small" style="width:100%" onclick="botCloseAll()">Закрыть все партии бота (${openCount})</button></div>` : ""}`;
+
+  document.getElementById("bot-settings").innerHTML = `
+    <div class="setting"><div class="seg">${Object.entries(STRATS).map(([k, s]) => `<button class="${k === bot.strategy ? "on" : ""}" onclick="botSet('strategy','${k}')">${s.name}</button>`).join("")}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:10px;line-height:1.5">${S.desc}</div></div>
+    <div class="param"><span class="k">Бюджет бота, $</span><input inputmode="decimal" value="${bot.budget}" onchange="botSet('budget',this.value)"></div>
+    <div class="param"><span class="k">Одна сделка, $</span><input inputmode="decimal" value="${bot.perTrade}" onchange="botSet('perTrade',this.value)"></div>
+    ${S.params.map(([k, label]) => `<div class="param"><span class="k">${label}</span><input inputmode="decimal" value="${bot.params[k]}" onchange="botSet('${k}',this.value)"></div>`).join("")}
+    <div class="coinsel">${COINS.map(c => `<button class="${bot.coins.includes(c.s) ? "on" : ""}" onclick="botSet('coin','${c.s}')">${icon(c.s, "sm")}${c.s}</button>`).join("")}</div>`;
+
+  document.getElementById("bot-lots").innerHTML = lotsHtml || '<div class="empty">Открытых партий нет.</div>';
+  document.getElementById("bot-log").innerHTML = bot.log.length ? bot.log.slice(0, 30).map(botLogRow).join("")
+    : '<div class="empty">Бот ещё ничего не делал.</div>';
+}
+function botLogRow(e) {
+  const when = new Date(e.at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return `<div class="row"><div class="coin sm" style="--c1:#1c1c22;--c2:#3a3a44"><span>${e.side === "buy" ? "🟢" : "🔴"}</span></div>
+    <div class="main"><div class="t">${e.side === "buy" ? "Купил" : "Продал"} ${e.s} по ${money(e.price)}</div><div class="s">${esc(e.reason)} · ${when}</div></div>
+    <div class="side num"><div class="t">${money(e.usd)}</div><div class="s">${e.side === "sell" ? signed(e.pnl) : ""}</div></div></div>`;
+}
+async function runBacktest() {
+  const btn = document.getElementById("bot-bt-btn"), box = document.getElementById("bot-backtest");
+  btn.disabled = true; btn.textContent = "Считаю по истории…";
+  box.innerHTML = '<div class="empty">Загружаю 30 дней цен по каждой монете…</div>';
+  try {
+    const r = await backtest();
+    if (!r) { box.innerHTML = '<div class="empty">Не удалось загрузить историю. Попробуй позже.</div>'; return; }
+    const fmt = t => new Date(t).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+    box.innerHTML = `
+      <div class="kpi num" style="padding-top:14px"><div><div class="v">${signed(r.pnl)}</div><div class="k">стратегия «${STRATS[state.bot.strategy].name}»</div></div>
+        <div><div class="v">${signed(r.held)}</div><div class="k">просто держать</div></div>
+        <div><div class="v">${r.trades}</div><div class="k">сделок, ${r.trades ? Math.round(r.wins / r.trades * 100) : 0}% в плюс</div></div></div>
+      <div class="stat"><span class="k">Период</span><span>${fmt(r.from)} — ${fmt(r.to)}, бюджет ${money(state.bot.budget)}</span></div>
+      <div class="stat"><span class="k">Закрытые сделки</span><span>${signed(r.realized)}</span></div>
+      <div class="stat"><span class="k">Открытые партии на конец</span><span>${signed(r.open)}</span></div>
+      ${r.log.map(botLogRow).join("")}`;
+    haptic("success");
+  } finally { btn.disabled = false; btn.textContent = "📊 Проверить за 30 дней"; }
+}
 function setSetting(k, v) { state.settings[k] = v; save(); haptic("light"); render(); }
 function resetAccount() {
   ask("Обнулить демо-счёт? Монеты, стейкинг и история сотрутся.", ok => {
     if (!ok) return;
-    state = Object.assign(load(), { cash: START_CASH, holdings: {}, trades: [], stake: null, topups: 0 });
+    const bot = Object.assign(JSON.parse(JSON.stringify(BOT_DEFAULT)), { strategy: state.bot.strategy, budget: state.bot.budget,
+      perTrade: state.bot.perTrade, coins: state.bot.coins, params: state.bot.params });   // настройки бота оставляем, результаты — нет
+    state = Object.assign(load(), { cash: START_CASH, holdings: {}, trades: [], stake: null, topups: 0, bot });
     save(); haptic("success"); toast("Счёт обнулён"); go("wallet");
   });
 }
@@ -953,6 +1240,7 @@ function haptic(kind) {
 async function refresh(force) {
   await fetchBoard(force); render();
   if (force) { haptic("light"); toast(offline ? "Биржа не отвечает" : "Цены обновлены"); }
+  botTick();   // после каждого обновления цен бот получает шанс сходить
 }
 
 /* ---------------- старт ---------------- */
@@ -971,8 +1259,10 @@ async function refresh(force) {
     buy("TON", 1500); buy("BTC", 2000); buy("ETH", 800); stake(300);
     swap("ETH", "SOL", 0.1); send("USD", 120, "@friend"); topup();
     state.trades[0].at -= 3600e3 * 5; state.stake.since -= 86400e3 * 40;
+    state.bot.on = true; state.bot.lastTick = Date.now() - 6 * 86400e3; await botTick();   // бот «работал» 6 дней
     const target = hash.split(":")[1] || "wallet";
     target.startsWith("coin=") ? openCoin(target.slice(5)) : go(target);
+    if (target === "bot") runBacktest();
     return;
   }
   if (hash.startsWith("coin=") && BY[hash.slice(5)]) openCoin(hash.slice(5));
