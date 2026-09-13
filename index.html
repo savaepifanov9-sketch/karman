@@ -4,172 +4,227 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#000000">
 <title>Karman</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-  /* Karman — демо-криптокошелёк. Один файл: разметка, стили, логика. */
+  /* Karman — демо-криптокошелёк. Один файл: разметка, стили, логика.
+     Стиль: чистый чёрный, объёмные «стеклянные» карточки, сферические иконки монет. */
   :root {
-    --bg: #10161F;
-    --card: #1D2633;
-    --card-2: #232E3C;
-    --line: #2B3644;
-    --text: #E8EDF5;
-    --muted: #7C8797;
-    --accent: #45AEF5;
-    --up: #39D98A;
-    --down: #FF5C5C;
-    --radius: 18px;
+    --bg: #000;
+    --glass: linear-gradient(150deg, rgba(255,255,255,.075), rgba(255,255,255,.02) 45%, rgba(0,0,0,0));
+    --card: #0d0d11;
+    --card-2: #15151b;
+    --line: rgba(255,255,255,.07);
+    --text: #f2f3f7;
+    --muted: #8b90a0;
+    --accent: #4f8cff;
+    --accent-2: #a56bff;
+    --up: #34e59a;
+    --down: #ff5d6c;
+    --r: 22px;
     --safe-b: env(safe-area-inset-bottom, 0px);
     --safe-t: env(safe-area-inset-top, 0px);
+    --shadow: 0 24px 48px -18px rgba(0,0,0,.9), 0 1px 0 rgba(255,255,255,.06) inset, 0 -1px 0 rgba(0,0,0,.6) inset;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; background: var(--bg); color: var(--text); }
   body {
     font: 15px/1.4 -apple-system, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
-    min-height: 100vh; overscroll-behavior: none;
-    -webkit-font-smoothing: antialiased; user-select: none;
+    min-height: 100vh; overscroll-behavior: none; -webkit-font-smoothing: antialiased; user-select: none;
   }
   button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
-  input { font: inherit; color: inherit; }
+  input, select { font: inherit; color: inherit; }
 
-  #app { max-width: 560px; margin: 0 auto; padding: calc(12px + var(--safe-t)) 16px calc(84px + var(--safe-b)); }
-  .screen { display: none; animation: fade .18s ease; }
+  /* фоновое свечение */
+  .glow { position: fixed; border-radius: 50%; filter: blur(90px); pointer-events: none; z-index: 0; opacity: .5; }
+  .glow.a { width: 380px; height: 380px; left: -140px; top: -120px; background: radial-gradient(circle, #2b5cff, transparent 70%); animation: drift 14s ease-in-out infinite alternate; }
+  .glow.b { width: 320px; height: 320px; right: -120px; top: 40%; background: radial-gradient(circle, #6a3cff, transparent 70%); animation: drift 18s ease-in-out infinite alternate-reverse; }
+  @keyframes drift { to { transform: translate(40px, 60px) scale(1.15); } }
+
+  #app { position: relative; z-index: 1; max-width: 560px; margin: 0 auto; padding: calc(14px + var(--safe-t)) 16px calc(92px + var(--safe-b)); }
+  .screen { display: none; animation: fade .2s ease; }
   .screen.active { display: block; }
-  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
-  /* ---- шапка ---- */
-  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; min-height: 36px; }
-  .topbar h1 { font-size: 20px; margin: 0; font-weight: 700; letter-spacing: -.2px; }
-  .topbar .sub { color: var(--muted); font-size: 13px; }
-  .iconbtn { width: 36px; height: 36px; border-radius: 12px; background: var(--card); display: grid; place-items: center; font-size: 17px; }
-  .iconbtn:active { transform: scale(.94); }
-  .back { display: flex; align-items: center; gap: 6px; color: var(--accent); font-size: 15px; padding: 6px 0; }
-
-  /* ---- баланс ---- */
-  .hero { text-align: center; padding: 22px 0 18px; }
-  .hero .label { color: var(--muted); font-size: 13px; }
-  .hero .amount { font-size: 40px; font-weight: 700; letter-spacing: -1px; margin: 4px 0 6px; font-variant-numeric: tabular-nums; }
-  .hero .change { font-size: 14px; font-weight: 600; }
-  .hero .mood { color: var(--muted); font-size: 13px; margin-top: 8px; font-style: italic; }
   .up { color: var(--up); } .down { color: var(--down); } .muted { color: var(--muted); }
+  .num { font-variant-numeric: tabular-nums; }
 
-  .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 6px 0 18px; }
-  .action { background: var(--card); border-radius: var(--radius); padding: 14px 6px 12px; text-align: center; font-size: 13px; font-weight: 600; }
-  .action .ic { font-size: 22px; display: block; margin-bottom: 6px; }
-  .action:active { background: var(--card-2); }
+  /* ---- объёмная карточка баланса ---- */
+  .hero-wrap { perspective: 1100px; margin-bottom: 18px; }
+  .hero {
+    position: relative; border-radius: 26px; padding: 22px 22px 18px; overflow: hidden;
+    background: linear-gradient(160deg, #1b1b22 0%, #0b0b0f 55%, #030304 100%);
+    box-shadow: 0 40px 70px -30px rgba(0,0,0,1), 0 0 0 1px rgba(255,255,255,.06), 0 1px 0 rgba(255,255,255,.12) inset;
+    transform-style: preserve-3d; transition: transform .25s ease; will-change: transform;
+  }
+  .hero::before { content: ""; position: absolute; inset: -40% -20%; background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,.09) 50%, transparent 60%); transform: translateZ(1px); pointer-events: none; }
+  .hero::after { content: ""; position: absolute; width: 260px; height: 260px; right: -90px; top: -110px; border-radius: 50%; background: radial-gradient(circle, rgba(79,140,255,.45), rgba(165,107,255,.15) 45%, transparent 70%); filter: blur(10px); pointer-events: none; }
+  .hero > * { position: relative; transform: translateZ(30px); }
+  .hero .top { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 12px; letter-spacing: .3px; }
+  .hero .top .chip { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); border-radius: 999px; padding: 4px 10px; font-size: 11px; }
+  .hero .amount { font-size: 42px; font-weight: 800; letter-spacing: -1.4px; margin: 16px 0 4px; text-shadow: 0 6px 24px rgba(0,0,0,.6); }
+  .hero .change { font-size: 14px; font-weight: 600; min-height: 20px; }
+  .hero .mood { color: var(--muted); font-size: 12.5px; margin-top: 14px; font-style: italic; }
+  .hero .addr { margin-top: 12px; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .hero .addr b { color: var(--text); font-weight: 600; letter-spacing: .3px; }
+
+  /* ---- круглые объёмные кнопки действий ---- */
+  .actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 0 0 22px; }
+  .action { text-align: center; font-size: 12px; font-weight: 600; color: var(--muted); }
+  .action .orb {
+    width: 58px; height: 58px; margin: 0 auto 8px; border-radius: 50%; display: grid; place-items: center; font-size: 22px;
+    background: radial-gradient(circle at 32% 28%, #2a2a33, #111116 55%, #050506 100%);
+    box-shadow: 0 14px 26px -10px rgba(0,0,0,1), 0 0 0 1px rgba(255,255,255,.07), 0 1px 0 rgba(255,255,255,.14) inset, 0 -6px 12px rgba(0,0,0,.6) inset;
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .action:active .orb { transform: scale(.92) translateY(2px); box-shadow: 0 6px 14px -8px rgba(0,0,0,1), 0 0 0 1px rgba(255,255,255,.07), 0 -1px 0 rgba(255,255,255,.1) inset; }
+  .action.hl .orb { box-shadow: 0 14px 30px -10px rgba(79,140,255,.6), 0 0 0 1px rgba(79,140,255,.35), 0 1px 0 rgba(255,255,255,.2) inset; }
 
   /* ---- карточки и списки ---- */
-  .card { background: var(--card); border-radius: var(--radius); overflow: hidden; margin-bottom: 14px; }
+  .card { position: relative; background: var(--card); border-radius: var(--r); overflow: hidden; margin-bottom: 14px; box-shadow: var(--shadow); }
+  .card::before { content: ""; position: absolute; inset: 0; background: var(--glass); pointer-events: none; }
+  .card > * { position: relative; }
   .row { display: flex; align-items: center; gap: 12px; padding: 13px 14px; width: 100%; text-align: left; border-bottom: 1px solid var(--line); }
   .row:last-child { border-bottom: 0; }
-  .row:active { background: var(--card-2); }
-  .row .logo { width: 42px; height: 42px; border-radius: 50%; background: var(--card-2); display: grid; place-items: center; font-size: 21px; flex: none; }
+  .row:active { background: rgba(255,255,255,.04); }
   .row .main { flex: 1; min-width: 0; }
   .row .t { font-weight: 600; font-size: 15px; }
-  .row .s { color: var(--muted); font-size: 13px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .row .side { text-align: right; font-variant-numeric: tabular-nums; }
+  .row .s { color: var(--muted); font-size: 12.5px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .side { text-align: right; }
   .row .side .t { font-weight: 600; }
-  .row .side .s { font-size: 13px; margin-top: 2px; }
-  .section { color: var(--muted); font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; margin: 18px 4px 8px; }
+  .row .side .s { font-size: 12.5px; margin-top: 2px; }
+  .section { color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; margin: 18px 6px 8px; display: flex; justify-content: space-between; align-items: center; }
+  .section .link { color: var(--accent); text-transform: none; letter-spacing: 0; font-weight: 600; }
   .empty { color: var(--muted); text-align: center; padding: 28px 16px; font-size: 14px; }
 
+  /* сферическая иконка монеты */
+  .coin { width: 44px; height: 44px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 20px; position: relative;
+    background: radial-gradient(circle at 32% 28%, var(--c2), var(--c1) 55%, #000 130%);
+    box-shadow: 0 10px 18px -8px rgba(0,0,0,1), 0 1px 0 rgba(255,255,255,.35) inset, 0 -5px 10px rgba(0,0,0,.45) inset; }
+  .coin::after { content: ""; position: absolute; left: 20%; top: 12%; width: 34%; height: 22%; border-radius: 50%; background: rgba(255,255,255,.35); filter: blur(2px); }
+  .coin span { position: relative; filter: drop-shadow(0 2px 3px rgba(0,0,0,.6)); }
+  .coin.lg { width: 56px; height: 56px; font-size: 26px; }
+  .coin.sm { width: 30px; height: 30px; font-size: 14px; }
+
   /* ---- экран монеты ---- */
-  .coin-head { display: flex; align-items: center; gap: 12px; padding: 6px 0 4px; }
-  .coin-head .logo { width: 48px; height: 48px; border-radius: 50%; background: var(--card); display: grid; place-items: center; font-size: 24px; }
-  .coin-head .price { font-size: 30px; font-weight: 700; letter-spacing: -.6px; font-variant-numeric: tabular-nums; }
+  .back { display: flex; align-items: center; gap: 6px; color: var(--accent); font-size: 15px; padding: 4px 0 10px; }
+  .coin-head { display: flex; align-items: center; gap: 14px; padding: 2px 0 6px; }
+  .coin-head .price { font-size: 32px; font-weight: 800; letter-spacing: -.8px; }
   .coin-head .name { color: var(--muted); font-size: 13px; }
-  .tagline { color: var(--muted); font-size: 13px; font-style: italic; margin: 6px 0 10px; }
-  .chart-wrap { background: var(--card); border-radius: var(--radius); padding: 14px 12px 8px; margin-bottom: 12px; position: relative; }
+  .tagline { color: var(--muted); font-size: 13px; font-style: italic; margin: 4px 0 12px; }
+  .chart-wrap { padding: 14px 12px 10px; }
   .chart-wrap canvas { width: 100%; height: 210px; display: block; touch-action: none; }
-  .chart-meta { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; margin-bottom: 6px; font-variant-numeric: tabular-nums; min-height: 16px; }
-  .periods { display: flex; gap: 6px; margin-top: 8px; }
+  .chart-meta { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; margin-bottom: 6px; min-height: 16px; }
+  .periods { display: flex; gap: 6px; margin-top: 10px; background: rgba(0,0,0,.35); border-radius: 12px; padding: 3px; }
   .periods button { flex: 1; padding: 8px 0; border-radius: 10px; font-size: 13px; font-weight: 600; color: var(--muted); }
-  .periods button.on { background: var(--card-2); color: var(--text); }
-  .trade-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0 16px; }
-  .btn { padding: 14px; border-radius: 14px; font-weight: 700; font-size: 15px; text-align: center; }
-  .btn:active { transform: scale(.98); }
-  .btn.primary { background: var(--accent); color: #06111c; }
-  .btn.buy { background: var(--up); color: #06120c; }
-  .btn.sell { background: var(--down); color: #1a0606; }
-  .btn.ghost { background: var(--card); }
-  .btn.danger { background: rgba(255,92,92,.14); color: var(--down); }
-  .btn[disabled] { opacity: .45; transform: none; }
-  .stat { display: flex; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  .periods button.on { background: linear-gradient(160deg, #26262f, #121217); color: var(--text); box-shadow: 0 4px 10px -4px rgba(0,0,0,1), 0 1px 0 rgba(255,255,255,.1) inset; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0 16px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 6px 0 16px; }
+  .btn { padding: 14px; border-radius: 16px; font-weight: 700; font-size: 15px; text-align: center; position: relative; overflow: hidden;
+    box-shadow: 0 14px 24px -12px rgba(0,0,0,1), 0 1px 0 rgba(255,255,255,.15) inset; transition: transform .12s ease; }
+  .btn:active { transform: scale(.97) translateY(1px); }
+  .btn.primary { background: linear-gradient(160deg, #6ea0ff, #3d78f0 60%, #2b5cd6); color: #fff; box-shadow: 0 16px 30px -12px rgba(79,140,255,.8), 0 1px 0 rgba(255,255,255,.35) inset; }
+  .btn.buy { background: linear-gradient(160deg, #5cf0b0, #22c47c 60%, #14985c); color: #03150c; box-shadow: 0 16px 30px -12px rgba(52,229,154,.7), 0 1px 0 rgba(255,255,255,.35) inset; }
+  .btn.sell { background: linear-gradient(160deg, #ff8090, #f0405a 60%, #c92a42); color: #fff; box-shadow: 0 16px 30px -12px rgba(255,93,108,.7), 0 1px 0 rgba(255,255,255,.3) inset; }
+  .btn.ghost { background: linear-gradient(160deg, #1f1f27, #0e0e12); }
+  .btn.danger { background: rgba(255,93,108,.12); color: var(--down); box-shadow: 0 0 0 1px rgba(255,93,108,.25) inset; }
+  .btn.small { padding: 10px; font-size: 13px; border-radius: 13px; }
+  .btn[disabled] { opacity: .4; transform: none; }
+  .stat { display: flex; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--line); }
   .stat:last-child { border-bottom: 0; }
   .stat .k { color: var(--muted); }
 
   /* ---- шторка ---- */
-  .sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; z-index: 20; }
+  .sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,.7); backdrop-filter: blur(6px); display: none; z-index: 20; }
   .sheet-bg.open { display: block; }
-  .sheet { position: fixed; left: 0; right: 0; bottom: 0; max-width: 560px; margin: 0 auto; background: var(--card); border-radius: 22px 22px 0 0; padding: 12px 16px calc(18px + var(--safe-b)); transform: translateY(100%); transition: transform .22s ease; z-index: 21; }
+  .sheet { position: fixed; left: 0; right: 0; bottom: 0; max-width: 560px; margin: 0 auto; max-height: 92vh; overflow: auto;
+    background: linear-gradient(180deg, #16161c, #0a0a0d); border-radius: 26px 26px 0 0; padding: 12px 18px calc(20px + var(--safe-b));
+    box-shadow: 0 -20px 60px rgba(0,0,0,.9), 0 1px 0 rgba(255,255,255,.1) inset; transform: translateY(100%); transition: transform .25s cubic-bezier(.2,.8,.2,1); z-index: 21; }
   .sheet.open { transform: none; }
-  .sheet .grip { width: 38px; height: 4px; border-radius: 2px; background: var(--line); margin: 0 auto 14px; }
-  .sheet h2 { margin: 0 0 4px; font-size: 18px; }
+  .sheet .grip { width: 40px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.18); margin: 0 auto 16px; }
+  .sheet h2 { margin: 0 0 4px; font-size: 19px; }
   .sheet .hint { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
-  .amount-box { background: var(--bg); border-radius: 14px; padding: 12px 14px; display: flex; align-items: baseline; gap: 6px; }
-  .amount-box .unit { color: var(--muted); font-size: 18px; font-weight: 600; }
-  .amount-box input { flex: 1; background: none; border: 0; outline: 0; font-size: 28px; font-weight: 700; width: 100%; min-width: 0; font-variant-numeric: tabular-nums; }
-  .chips { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
-  .chips button { padding: 8px 12px; border-radius: 10px; background: var(--card-2); font-size: 13px; font-weight: 600; }
-  .chips button:active { background: var(--line); }
-  .preview { display: flex; justify-content: space-between; color: var(--muted); font-size: 13px; margin: 6px 2px 14px; font-variant-numeric: tabular-nums; }
+  .field { background: rgba(0,0,0,.45); border-radius: 16px; padding: 12px 14px; margin-bottom: 10px; box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 -1px 0 rgba(0,0,0,.6) inset; }
+  .field .lbl { color: var(--muted); font-size: 12px; margin-bottom: 4px; display: flex; justify-content: space-between; }
+  .field .in { display: flex; align-items: center; gap: 10px; }
+  .field input { flex: 1; background: none; border: 0; outline: 0; font-size: 24px; font-weight: 700; min-width: 0; width: 100%; }
+  .field input.text { font-size: 15px; font-weight: 500; }
+  .field .unit { color: var(--muted); font-weight: 600; }
+  .picker { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.06); border-radius: 12px; padding: 6px 10px 6px 6px; font-weight: 600; font-size: 14px; }
+  .picker select { background: none; border: 0; outline: 0; appearance: none; -webkit-appearance: none; font-weight: 600; padding-right: 14px; }
+  .swap-arrow { text-align: center; margin: -4px 0 6px; }
+  .swap-arrow button { width: 40px; height: 40px; border-radius: 50%; background: radial-gradient(circle at 32% 28%, #2a2a33, #111116 60%, #050506); box-shadow: 0 10px 18px -8px rgba(0,0,0,1), 0 1px 0 rgba(255,255,255,.15) inset; font-size: 18px; }
+  .chips { display: flex; gap: 8px; margin: 4px 0 12px; flex-wrap: wrap; }
+  .chips button { padding: 8px 12px; border-radius: 11px; background: rgba(255,255,255,.06); font-size: 13px; font-weight: 600; box-shadow: 0 1px 0 rgba(255,255,255,.08) inset; }
+  .chips button:active { background: rgba(255,255,255,.12); }
+  .preview { color: var(--muted); font-size: 13px; margin: 4px 2px 12px; line-height: 1.6; }
   .preview b { color: var(--text); }
   .err { color: var(--down); font-size: 13px; min-height: 18px; margin-bottom: 8px; }
+  .qr { display: block; width: 200px; height: 200px; margin: 6px auto 12px; border-radius: 18px; background: #fff; padding: 10px; box-shadow: 0 20px 40px -16px rgba(0,0,0,1), 0 0 0 1px rgba(255,255,255,.1); }
+  .addr-box { background: rgba(0,0,0,.45); border-radius: 14px; padding: 12px 14px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; word-break: break-all; color: var(--text); text-align: center; line-height: 1.5; }
+
+  /* ---- стейкинг ---- */
+  .stake-hero { padding: 16px 14px; display: flex; align-items: center; gap: 14px; }
+  .stake-hero .big { font-size: 22px; font-weight: 800; }
+  .stake-hero .apy { color: var(--up); font-weight: 700; }
 
   /* ---- настройки ---- */
-  .seg { display: flex; background: var(--bg); border-radius: 12px; padding: 3px; }
+  .seg { display: flex; background: rgba(0,0,0,.45); border-radius: 12px; padding: 3px; }
   .seg button { flex: 1; padding: 8px; border-radius: 10px; font-size: 13px; font-weight: 600; color: var(--muted); }
-  .seg button.on { background: var(--card-2); color: var(--text); }
+  .seg button.on { background: linear-gradient(160deg, #26262f, #121217); color: var(--text); box-shadow: 0 4px 10px -4px rgba(0,0,0,1), 0 1px 0 rgba(255,255,255,.1) inset; }
   .setting { padding: 12px 14px; border-bottom: 1px solid var(--line); }
   .setting:last-child { border-bottom: 0; }
   .setting .k { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
   .badges { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 14px; }
-  .badge { padding: 8px 12px; border-radius: 12px; background: var(--card-2); font-size: 13px; }
-  .badge.off { opacity: .35; }
+  .badge { padding: 8px 12px; border-radius: 12px; background: rgba(255,255,255,.06); font-size: 13px; box-shadow: 0 1px 0 rgba(255,255,255,.08) inset; }
+  .badge.off { opacity: .3; }
 
   /* ---- таббар ---- */
-  .tabbar { position: fixed; left: 0; right: 0; bottom: 0; background: rgba(16,22,31,.92); backdrop-filter: blur(14px); border-top: 1px solid var(--line); z-index: 10; padding-bottom: var(--safe-b); }
-  .tabbar .in { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); }
-  .tab { padding: 9px 0 8px; text-align: center; color: var(--muted); font-size: 11px; font-weight: 600; }
-  .tab .ic { font-size: 21px; display: block; margin-bottom: 2px; filter: grayscale(1) opacity(.7); }
-  .tab.on { color: var(--accent); } .tab.on .ic { filter: none; }
+  .tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; padding: 0 12px calc(10px + var(--safe-b)); pointer-events: none; }
+  .tabbar .in { pointer-events: auto; max-width: 480px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr);
+    background: linear-gradient(180deg, rgba(28,28,34,.92), rgba(10,10,13,.95)); backdrop-filter: blur(18px); border-radius: 22px;
+    box-shadow: 0 20px 40px -14px rgba(0,0,0,1), 0 0 0 1px rgba(255,255,255,.08), 0 1px 0 rgba(255,255,255,.1) inset; }
+  .tab { padding: 10px 0 9px; text-align: center; color: var(--muted); font-size: 11px; font-weight: 600; border-radius: 18px; }
+  .tab .ic { font-size: 20px; display: block; margin-bottom: 2px; filter: grayscale(1) opacity(.6); transition: .15s; }
+  .tab.on { color: var(--text); }
+  .tab.on .ic { filter: none; transform: translateY(-2px); text-shadow: 0 0 18px rgba(79,140,255,.8); }
 
-  /* ---- тост ---- */
-  .toast { position: fixed; left: 50%; bottom: calc(96px + var(--safe-b)); transform: translateX(-50%) translateY(20px); background: var(--card-2); padding: 10px 16px; border-radius: 14px; font-size: 14px; opacity: 0; transition: .2s; pointer-events: none; z-index: 30; white-space: nowrap; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
+  .toast { position: fixed; left: 50%; bottom: calc(100px + var(--safe-b)); transform: translateX(-50%) translateY(20px); background: linear-gradient(160deg, #26262f, #121217); padding: 11px 18px; border-radius: 16px; font-size: 14px; opacity: 0; transition: .2s; pointer-events: none; z-index: 30; white-space: nowrap; box-shadow: 0 16px 40px rgba(0,0,0,.8), 0 1px 0 rgba(255,255,255,.12) inset; }
   .toast.show { opacity: 1; transform: translateX(-50%); }
-  .offline { background: rgba(255,92,92,.12); color: var(--down); border-radius: 12px; padding: 10px 14px; font-size: 13px; margin-bottom: 12px; display: none; }
+  .offline { background: rgba(255,93,108,.12); color: var(--down); border-radius: 14px; padding: 10px 14px; font-size: 13px; margin-bottom: 12px; display: none; }
   .offline.show { display: block; }
 </style>
 </head>
 <body>
+<div class="glow a"></div><div class="glow b"></div>
 <div id="app">
 
   <!-- ===== Кошелёк ===== -->
   <section class="screen active" id="s-wallet">
-    <div class="topbar">
-      <div><h1>Karman</h1><div class="sub" id="greet"></div></div>
-      <button class="iconbtn" onclick="refresh(true)" title="Обновить">↻</button>
-    </div>
     <div class="offline" id="offline">📡 Биржа не отвечает — показываю последние известные цены.</div>
-    <div class="hero">
-      <div class="label">Общий баланс</div>
-      <div class="amount" id="total">—</div>
-      <div class="change" id="total-change"></div>
+    <div class="hero-wrap"><div class="hero" id="hero">
+      <div class="top"><span id="greet"></span><span class="chip">DEMO</span></div>
+      <div class="amount num" id="total">—</div>
+      <div class="change num" id="total-change"></div>
       <div class="mood" id="mood"></div>
-    </div>
+      <div class="addr"><span>Адрес</span><b id="addr-short"></b><button class="muted" onclick="copyAddr()" title="Скопировать">⧉</button></div>
+    </div></div>
     <div class="actions">
-      <button class="action" onclick="go('market')"><span class="ic">🟢</span>Купить</button>
-      <button class="action" onclick="quickSell()"><span class="ic">🔴</span>Продать</button>
-      <button class="action" onclick="go('history')"><span class="ic">🧾</span>История</button>
+      <button class="action" onclick="openSend()"><div class="orb">↗</div>Отправить</button>
+      <button class="action" onclick="openReceive()"><div class="orb">↙</div>Получить</button>
+      <button class="action" onclick="openSwap()"><div class="orb">⇄</div>Обмен</button>
+      <button class="action hl" onclick="go('market')"><div class="orb">📈</div>Рынок</button>
     </div>
-    <div class="section">Активы</div>
+    <div class="section"><span>Активы</span><button class="link" onclick="refresh(true)">Обновить</button></div>
     <div class="card" id="assets"></div>
+    <div class="section"><span>Заработать</span></div>
+    <div class="card" id="stake-card"></div>
   </section>
 
   <!-- ===== Рынок ===== -->
   <section class="screen" id="s-market">
-    <div class="topbar"><div><h1>Рынок</h1><div class="sub" id="market-sub"></div></div>
-      <button class="iconbtn" onclick="refresh(true)">↻</button></div>
+    <div class="section" style="margin-top:4px"><span>Рынок</span><span class="muted" id="market-sub" style="text-transform:none;letter-spacing:0;font-weight:500"></span></div>
     <div class="card" id="market"></div>
   </section>
 
@@ -177,48 +232,53 @@
   <section class="screen" id="s-coin">
     <button class="back" onclick="back()">‹ Назад</button>
     <div class="coin-head">
-      <div class="logo" id="c-logo"></div>
-      <div><div class="price" id="c-price">—</div><div class="name" id="c-name"></div></div>
+      <div class="coin lg" id="c-logo"><span></span></div>
+      <div><div class="price num" id="c-price">—</div><div class="name" id="c-name"></div></div>
     </div>
     <div class="tagline" id="c-tag"></div>
-    <div class="chart-wrap">
-      <div class="chart-meta"><span id="ch-left"></span><span id="ch-right"></span></div>
+    <div class="card chart-wrap">
+      <div class="chart-meta num"><span id="ch-left"></span><span id="ch-right"></span></div>
       <canvas id="chart"></canvas>
       <div class="periods" id="periods"></div>
     </div>
-    <div class="trade-btns">
+    <div class="grid2">
       <button class="btn buy" onclick="openTrade('buy')">Купить</button>
       <button class="btn sell" id="c-sell" onclick="openTrade('sell')">Продать</button>
     </div>
-    <div class="card" id="c-stats"></div>
+    <div class="grid4" style="margin-top:-6px">
+      <button class="btn ghost small" onclick="openSwap(coin)">⇄ Обмен</button>
+      <button class="btn ghost small" onclick="openSend(coin)">↗ Отправить</button>
+      <button class="btn ghost small" onclick="openReceive()">↙ Получить</button>
+      <button class="btn ghost small" id="c-stake" onclick="openStake()">🔒 Стейк</button>
+    </div>
+    <div class="card num" id="c-stats"></div>
   </section>
 
   <!-- ===== История ===== -->
   <section class="screen" id="s-history">
-    <div class="topbar"><h1>История</h1></div>
+    <div class="section" style="margin-top:4px"><span>История</span></div>
     <div class="card" id="history"></div>
   </section>
 
   <!-- ===== Настройки ===== -->
   <section class="screen" id="s-settings">
-    <div class="topbar"><h1>Настройки</h1></div>
+    <div class="section" style="margin-top:4px"><span>Настройки</span></div>
     <div class="card">
-      <div class="setting"><div class="k">Валюта показа</div>
-        <div class="seg" id="seg-cur"></div></div>
-      <div class="setting"><div class="k">Период графика по умолчанию</div>
-        <div class="seg" id="seg-days"></div></div>
+      <div class="setting"><div class="k">Валюта показа</div><div class="seg" id="seg-cur"></div></div>
+      <div class="setting"><div class="k">Период графика по умолчанию</div><div class="seg" id="seg-days"></div></div>
     </div>
-    <div class="section">Достижения</div>
+    <div class="section"><span>Достижения</span></div>
     <div class="card"><div class="badges" id="badges"></div></div>
-    <div class="section">Демо-счёт</div>
-    <div class="card">
-      <div class="stat"><span class="k">Сделок</span><span id="st-trades">0</span></div>
+    <div class="section"><span>Демо-счёт</span></div>
+    <div class="card num">
+      <div class="stat"><span class="k">Операций</span><span id="st-trades">0</span></div>
       <div class="stat"><span class="k">Стартовый капитал</span><span id="st-start"></span></div>
+      <div class="stat"><span class="k">Пополнений</span><span id="st-topups"></span></div>
       <div class="stat"><span class="k">Результат</span><span id="st-result"></span></div>
     </div>
     <button class="btn danger" style="width:100%" onclick="resetAccount()">Сбросить демо-счёт</button>
-    <p class="muted" style="font-size:12px;text-align:center;margin-top:18px">
-      Karman · тренажёр в духе Tonkeeper. Котировки CoinGecko, обновление раз в минуту.<br>
+    <p class="muted" style="font-size:12px;text-align:center;margin-top:18px;line-height:1.6">
+      Karman · тренажёр крипто-кошелька. Котировки CoinGecko, обновление раз в минуту.<br>
       Ни блокчейна, ни настоящих денег — только тренировка.
     </p>
   </section>
@@ -231,34 +291,25 @@
   <button class="tab" data-tab="settings" onclick="go('settings')"><span class="ic">⚙️</span>Настройки</button>
 </div></nav>
 
-<div class="sheet-bg" id="sheet-bg" onclick="closeTrade()"></div>
-<div class="sheet" id="sheet">
-  <div class="grip"></div>
-  <h2 id="sh-title"></h2>
-  <div class="hint" id="sh-hint"></div>
-  <div class="amount-box"><span class="unit" id="sh-unit">$</span>
-    <input id="sh-input" inputmode="decimal" placeholder="0" oninput="previewTrade()"></div>
-  <div class="chips" id="sh-chips"></div>
-  <div class="preview"><span id="sh-prev-l"></span><span id="sh-prev-r"></span></div>
-  <div class="err" id="sh-err"></div>
-  <button class="btn primary" style="width:100%" id="sh-confirm" onclick="confirmTrade()">Подтвердить</button>
-</div>
+<div class="sheet-bg" id="sheet-bg" onclick="closeSheet()"></div>
+<div class="sheet" id="sheet"><div class="grip"></div><div id="sheet-body"></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
 /* ---------------- данные ---------------- */
 const COINS = [
-  { s: "TON",  id: "the-open-network", name: "Toncoin",  e: "💎", d: 3, tag: "Родная монета Telegram. Бывший Gram." },
-  { s: "BTC",  id: "bitcoin",          name: "Bitcoin",  e: "🟠", d: 6, tag: "Цифровое золото. Старший в комнате." },
-  { s: "ETH",  id: "ethereum",         name: "Ethereum", e: "🔷", d: 5, tag: "Смарт-контракты и всё, что на них выросло." },
-  { s: "SOL",  id: "solana",           name: "Solana",   e: "🟣", d: 4, tag: "Быстрая, дешёвая, иногда ложится поспать." },
-  { s: "BNB",  id: "binancecoin",      name: "BNB",      e: "🟡", d: 4, tag: "Монета крупнейшей биржи." },
-  { s: "DOGE", id: "dogecoin",         name: "Dogecoin", e: "🐕", d: 2, tag: "Начиналась как шутка. Шутка затянулась." },
-  { s: "NOT",  id: "notcoin",          name: "Notcoin",  e: "⚡", d: 0, tag: "Та самая, которую все тапали." },
+  { s: "TON",  id: "the-open-network", name: "Toncoin",  e: "💎", d: 3, c1: "#0a6fc2", c2: "#5ec8ff", tag: "Родная монета Telegram. Бывший Gram." },
+  { s: "BTC",  id: "bitcoin",          name: "Bitcoin",  e: "₿",  d: 6, c1: "#c96a00", c2: "#ffb347", tag: "Цифровое золото. Старший в комнате." },
+  { s: "ETH",  id: "ethereum",         name: "Ethereum", e: "◆",  d: 5, c1: "#3f4fb5", c2: "#8ea2ff", tag: "Смарт-контракты и всё, что на них выросло." },
+  { s: "SOL",  id: "solana",           name: "Solana",   e: "◎",  d: 4, c1: "#6a2fd6", c2: "#c08cff", tag: "Быстрая, дешёвая, иногда ложится поспать." },
+  { s: "BNB",  id: "binancecoin",      name: "BNB",      e: "⬡",  d: 4, c1: "#b58a00", c2: "#ffe27a", tag: "Монета крупнейшей биржи." },
+  { s: "DOGE", id: "dogecoin",         name: "Dogecoin", e: "Ð",  d: 2, c1: "#8a7a2a", c2: "#e2cf6f", tag: "Начиналась как шутка. Шутка затянулась." },
+  { s: "NOT",  id: "notcoin",          name: "Notcoin",  e: "⚡", d: 0, c1: "#2a2a2a", c2: "#8d8d8d", tag: "Та самая, которую все тапали." },
 ];
+const CASH = { s: "USD", name: "Доллары", e: "$", d: 2, c1: "#158a4f", c2: "#5ee3a0" };
 const BY = Object.fromEntries(COINS.map(c => [c.s, c]));
 const API = "https://api.coingecko.com/api/v3";
-const START_CASH = 10000, MIN_TRADE = 1;
+const START_CASH = 10000, MIN_TRADE = 1, TOPUP = 1000, STAKE_APY = 0.045;
 const PERIODS = [[1, "24ч"], [7, "7д"], [30, "30д"], [365, "1г"]];
 const CUR = { usd: "$", rub: "₽", eur: "€" };
 const STORAGE_KEY = "karman-v1";
@@ -266,26 +317,26 @@ const PRICE_TTL = 60e3, CHART_TTL = 300e3;
 
 const tg = window.Telegram && Telegram.WebApp && Telegram.WebApp.initData !== undefined ? Telegram.WebApp : null;
 
-/* состояние счёта: cash, holdings{SYM:{amount, invested}}, trades[], settings */
 let state = load();
-let board = null;            // { quotes: {SYM:{usd, ch}}, fx: {usd,rub,eur}, at }
-let charts = {};             // "SYM:days" -> { at, points }
+let board = null, charts = {};
 let screen = "wallet", prevScreen = "wallet", coin = null, days = null;
-let trade = null;            // { side, sym }
+let sheet = null;            // текущая шторка: { kind, ... }
 let offline = false;
 
+function genAddress() {
+  const abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  let s = "UQ"; for (let i = 0; i < 46; i++) s += abc[Math.floor(Math.random() * abc.length)];
+  return s;
+}
 function load() {
-  const base = { cash: START_CASH, holdings: {}, trades: [], settings: { currency: "usd", days: 7 }, created: Date.now() };
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return Object.assign(base, JSON.parse(raw));
-  } catch (e) {}
+  const base = { cash: START_CASH, holdings: {}, trades: [], settings: { currency: "usd", days: 7 },
+                 address: genAddress(), stake: null, topups: 0, created: Date.now() };
+  try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) return Object.assign(base, JSON.parse(raw)); } catch (e) {}
   return base;
 }
 function save() {
   const raw = JSON.stringify(state);
   try { localStorage.setItem(STORAGE_KEY, raw); } catch (e) {}
-  // В Telegram счёт дополнительно живёт в облаке — переживает смену устройства.
   if (tg && tg.CloudStorage && raw.length < 4000) { try { tg.CloudStorage.setItem(STORAGE_KEY, raw, () => {}); } catch (e) {} }
 }
 function loadCloud() {
@@ -293,9 +344,7 @@ function loadCloud() {
   try {
     tg.CloudStorage.getItem(STORAGE_KEY, (err, raw) => {
       if (err || !raw) return;
-      try {
-        const cloud = JSON.parse(raw);
-        // Облако главнее, если в нём больше сделок — значит, локальная копия отстала.
+      try { const cloud = JSON.parse(raw);
         if ((cloud.trades || []).length > state.trades.length) { state = Object.assign(load(), cloud); save(); render(); }
       } catch (e) {}
     });
@@ -306,10 +355,9 @@ function loadCloud() {
 async function fetchBoard(force) {
   if (board && !force && Date.now() - board.at < PRICE_TTL) return board;
   try {
-    const url = `${API}/simple/price?ids=${COINS.map(c => c.id).join(",")}&vs_currencies=usd,rub,eur&include_24hr_change=true`;
-    const r = await fetch(url); if (!r.ok) throw new Error(r.status);
-    const j = await r.json();
-    const quotes = {}, fx = { usd: 1 };
+    const r = await fetch(`${API}/simple/price?ids=${COINS.map(c => c.id).join(",")}&vs_currencies=usd,rub,eur&include_24hr_change=true`);
+    if (!r.ok) throw new Error(r.status);
+    const j = await r.json(), quotes = {}, fx = { usd: 1 };
     for (const c of COINS) {
       const row = j[c.id]; if (!row || row.usd == null) continue;
       quotes[c.s] = { usd: row.usd, ch: row.usd_24h_change || 0 };
@@ -335,6 +383,7 @@ async function fetchChart(sym, d) {
     return charts[k].points;
   } catch (e) { return c ? c.points : null; }
 }
+function price(sym) { return sym === "USD" ? 1 : (board && board.quotes[sym] ? board.quotes[sym].usd : 0); }
 
 /* ---------------- форматирование ---------------- */
 const NB = " ";
@@ -346,23 +395,32 @@ function money(usd, cur) {
   else {
     if (a >= 10000) body = a.toLocaleString("ru-RU", { maximumFractionDigits: 0 });
     else if (a >= 1) body = a.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    else if (a < 0.005) body = "0";   // хвосты float вроде 2.8e-14 — это ноль
     else body = a.toPrecision(4).replace(/\.?0+$/, "");
     body = CUR[cur] + body;
   }
   return sign + body.replace(/\s/g, NB);
 }
-function qty(sym, n) { return n.toLocaleString("ru-RU", { minimumFractionDigits: BY[sym].d, maximumFractionDigits: BY[sym].d }).replace(/\s/g, NB) + " " + sym; }
+function qty(sym, n) {
+  const d = sym === "USD" ? 2 : BY[sym].d;
+  return n.toLocaleString("ru-RU", { minimumFractionDigits: d, maximumFractionDigits: d }).replace(/\s/g, NB) + " " + sym;
+}
 function pct(ch) { return `<span class="${ch >= 0 ? "up" : "down"}">${ch >= 0 ? "▲" : "▼"} ${Math.abs(ch).toFixed(2)}%</span>`; }
-function signed(usd) { return `<span class="${usd >= 0 ? "up" : "down"}">${usd >= 0 ? "+" : "−"}${money(Math.abs(usd))}</span>`; }
+function signed(usd) { if (Math.abs(usd) < 0.005) usd = 0; return `<span class="${usd >= 0 ? "up" : "down"}">${usd >= 0 ? "+" : "−"}${money(Math.abs(usd))}</span>`; }
 function esc(s) { return String(s).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch])); }
 function parseNum(s) { const v = parseFloat(String(s).replace(/\s| |\$|₽|€/g, "").replace(",", ".")); return isFinite(v) ? v : NaN; }
+function icon(sym, cls) {
+  const c = sym === "USD" ? CASH : BY[sym];
+  return `<div class="coin ${cls || ""}" style="--c1:${c.c1};--c2:${c.c2}"><span>${c.e}</span></div>`;
+}
+function shortAddr(a) { return a.slice(0, 6) + "…" + a.slice(-5); }
 
 /* ---------------- характер ---------------- */
 function greeting() {
   const h = new Date().getHours();
   const w = h < 5 ? "Не спится" : h < 12 ? "Доброе утро" : h < 18 ? "Добрый день" : h < 23 ? "Добрый вечер" : "Не спится";
   const name = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.first_name : "трейдер";
-  return `${w}, ${esc(name)}.`;
+  return `${w}, ${esc(name)}`;
 }
 function mood(pnlPct, hasCoins) {
   if (!hasCoins) return "Портфель пустой — рынок ждёт первую сделку.";
@@ -373,15 +431,22 @@ function mood(pnlPct, hasCoins) {
   return "Глубокая просадка. Хорошо, что деньги ненастоящие.";
 }
 const BADGES = [
-  ["🥇", "Первая сделка", s => s.trades.length >= 1],
+  ["🥇", "Первая сделка", s => s.trades.some(t => t.side === "buy")],
   ["🧺", "Диверсификация", s => Object.keys(s.holdings).length >= 3],
+  ["⇄", "Первый обмен", s => s.trades.some(t => t.side === "swap")],
+  ["↗", "Первый перевод", s => s.trades.some(t => t.side === "send")],
+  ["🔒", "Стейкер", s => s.trades.some(t => t.side === "stake")],
   ["🟠", "Держу биткоин", s => !!s.holdings.BTC],
-  ["💎", "Руки-алмазы", s => !!s.holdings.TON && s.holdings.TON.invested >= 1000],
-  ["🔁", "Десять сделок", s => s.trades.length >= 10],
+  ["🔁", "Десять операций", s => s.trades.length >= 10],
   ["📈", "Удвоение", s => portfolio().total >= START_CASH * 2],
 ];
 
 /* ---------------- расчёты ---------------- */
+function stakeEarned() {
+  if (!state.stake) return 0;
+  const years = (Date.now() - state.stake.since) / (365.25 * 24 * 3600e3);
+  return state.stake.amount * STAKE_APY * years;
+}
 function portfolio() {
   let coins = 0, yesterday = 0, invested = 0;
   const rows = [];
@@ -394,55 +459,99 @@ function portfolio() {
     rows.push({ s, h, q, value, pnl: value - h.invested });
   }
   rows.sort((a, b) => b.value - a.value);
-  return { rows, coins, invested, total: state.cash + coins,
+  const staked = state.stake ? (state.stake.amount + stakeEarned()) * price("TON") : 0;
+  return { rows, coins, invested, staked, total: state.cash + coins + staked,
            day: yesterday ? (coins - yesterday) / yesterday * 100 : 0,
            pnlPct: invested ? (coins - invested) / invested * 100 : null };
 }
-
-function buy(sym, usd, price) {
-  if (!(usd >= MIN_TRADE)) return `Минимальная сделка — $${MIN_TRADE}.`;
-  if (usd > state.cash + 1e-9) return `Не хватает ${money(usd - state.cash)}.`;
-  usd = Math.min(usd, state.cash);
-  const amount = usd / price;
-  state.cash -= usd;
+function addHolding(sym, amount, usd) {
   const h = state.holdings[sym] || (state.holdings[sym] = { amount: 0, invested: 0 });
   h.amount += amount; h.invested += usd;
-  state.trades.unshift({ side: "buy", s: sym, amount, price, total: usd, at: Date.now() });
-  save(); return null;
 }
-function sell(sym, amount, price) {
+/* Снимает amount монет, возвращает списанную себестоимость или строку-ошибку. */
+function takeHolding(sym, amount) {
   const h = state.holdings[sym];
   if (!h || !(h.amount > 0)) return `У тебя нет ${sym}.`;
   if (!(amount > 0)) return "Количество должно быть больше нуля.";
   if (amount > h.amount * (1 + 1e-8)) return `Столько нет: у тебя ${qty(sym, h.amount)}.`;
   const all = amount >= h.amount * (1 - 1e-8);
-  if (all) amount = h.amount;
-  const total = amount * price;
-  if (total < MIN_TRADE && !all) return `Минимальная сделка — $${MIN_TRADE}.`;
-  const cost = h.invested * (amount / h.amount);
+  const cost = all ? h.invested : h.invested * (amount / h.amount);
   if (all) delete state.holdings[sym]; else { h.amount -= amount; h.invested -= cost; }
+  return cost;
+}
+function log(t) { state.trades.unshift(Object.assign({ at: Date.now() }, t)); save(); }
+
+function buy(sym, usd) {
+  const p = price(sym); if (!p) return "Нет цены.";
+  if (!(usd >= MIN_TRADE)) return `Минимальная сделка — $${MIN_TRADE}.`;
+  if (usd > state.cash + 1e-9) return `Не хватает ${money(usd - state.cash)}.`;
+  usd = Math.min(usd, state.cash);
+  const amount = usd / p;
+  state.cash -= usd; addHolding(sym, amount, usd);
+  log({ side: "buy", s: sym, amount, price: p, total: usd }); return null;
+}
+function sell(sym, amount) {
+  const p = price(sym); if (!p) return "Нет цены.";
+  const h = state.holdings[sym];
+  if (h && amount >= h.amount * (1 - 1e-8)) amount = h.amount;
+  const total = amount * p;
+  if (h && total < MIN_TRADE && amount < h.amount) return `Минимальная сделка — $${MIN_TRADE}.`;
+  const cost = takeHolding(sym, amount); if (typeof cost === "string") return cost;
   state.cash += total;
-  state.trades.unshift({ side: "sell", s: sym, amount, price, total, pnl: total - cost, at: Date.now() });
-  save(); return null;
+  log({ side: "sell", s: sym, amount, price: p, total, pnl: total - cost }); return null;
+}
+function swap(from, to, amount) {
+  if (from === to) return "Выбери разные активы.";
+  const pf = price(from), pt = price(to); if (!pf || !pt) return "Нет цены.";
+  const usd = amount * pf;
+  if (!(usd >= MIN_TRADE)) return `Минимальный обмен — $${MIN_TRADE}.`;
+  let cost;
+  if (from === "USD") { if (usd > state.cash + 1e-9) return `Не хватает ${money(usd - state.cash)}.`; state.cash -= usd; cost = usd; }
+  else { cost = takeHolding(from, amount); if (typeof cost === "string") return cost; }
+  const got = usd / pt;
+  if (to === "USD") state.cash += usd; else addHolding(to, got, usd);
+  log({ side: "swap", s: from, to, amount, got, total: usd, pnl: usd - cost }); return null;
+}
+function send(sym, amount, to) {
+  to = (to || "").trim();
+  if (to.length < 4) return "Укажи адрес или @username получателя.";
+  if (to === state.address) return "Это твой собственный адрес.";
+  const p = price(sym); if (!p) return "Нет цены.";
+  const usd = amount * p;
+  if (!(usd >= MIN_TRADE)) return `Минимальный перевод — $${MIN_TRADE}.`;
+  if (sym === "USD") { if (usd > state.cash + 1e-9) return `Не хватает ${money(usd - state.cash)}.`; state.cash -= usd; }
+  else { const cost = takeHolding(sym, amount); if (typeof cost === "string") return cost; }
+  log({ side: "send", s: sym, amount, total: usd, to }); return null;
+}
+function topup() {
+  state.cash += TOPUP; state.topups = (state.topups || 0) + 1;
+  log({ side: "receive", s: "USD", amount: TOPUP, total: TOPUP, from: "Karman Faucet" });
+}
+function stake(amount) {
+  const cost = takeHolding("TON", amount); if (typeof cost === "string") return cost;
+  if (state.stake) { state.stake.amount += stakeEarned() + amount; state.stake.invested += cost; state.stake.since = Date.now(); }
+  else state.stake = { amount, invested: cost, since: Date.now() };
+  log({ side: "stake", s: "TON", amount, total: amount * price("TON") }); return null;
+}
+function unstake() {
+  if (!state.stake) return "Ничего не застейкано.";
+  const total = state.stake.amount + stakeEarned();
+  addHolding("TON", total, state.stake.invested);
+  log({ side: "unstake", s: "TON", amount: total, total: total * price("TON"), earned: total - state.stake.amount });
+  state.stake = null; save(); return null;
 }
 
 /* ---------------- навигация ---------------- */
 function go(name) {
-  if (name !== "coin") { prevScreen = screen === "coin" ? prevScreen : screen; }
+  if (name !== "coin") prevScreen = screen === "coin" ? prevScreen : screen;
   screen = name;
   document.querySelectorAll(".screen").forEach(el => el.classList.toggle("active", el.id === "s-" + name));
   document.querySelectorAll(".tab").forEach(el => el.classList.toggle("on", el.dataset.tab === name));
   if (tg) { name === "coin" ? tg.BackButton.show() : tg.BackButton.hide(); }
-  window.scrollTo(0, 0);
-  render();
+  window.scrollTo(0, 0); render();
 }
 function back() { go(prevScreen === "coin" ? "market" : prevScreen); }
 function openCoin(sym) { coin = sym; days = state.settings.days; haptic("light"); go("coin"); }
-function quickSell() {
-  const p = portfolio();
-  if (!p.rows.length) return toast("Продавать пока нечего");
-  openCoin(p.rows[0].s); openTrade("sell");
-}
 
 /* ---------------- рендер ---------------- */
 function render() {
@@ -450,44 +559,54 @@ function render() {
   document.getElementById("offline").classList.toggle("show", offline);
   if (screen === "wallet") renderWallet(p);
   if (screen === "market") renderMarket();
-  if (screen === "coin") renderCoin(p);
+  if (screen === "coin") renderCoin();
   if (screen === "history") renderHistory();
   if (screen === "settings") renderSettings(p);
 }
 function renderWallet(p) {
   document.getElementById("greet").textContent = greeting();
   document.getElementById("total").textContent = board ? money(p.total) : "—";
-  document.getElementById("total-change").innerHTML = p.coins ? pct(p.day) + ' <span class="muted">за 24ч по монетам</span>' : "";
-  document.getElementById("mood").textContent = mood(p.pnlPct, p.rows.length > 0);
-  let html = `<div class="row"><div class="logo">💵</div><div class="main"><div class="t">Наличные</div><div class="s">Свободно для сделок</div></div>
-              <div class="side"><div class="t">${money(state.cash)}</div><div class="s muted">USD</div></div></div>`;
+  document.getElementById("total-change").innerHTML = p.coins ? pct(p.day) + ' <span class="muted">за 24ч</span>' : "";
+  document.getElementById("mood").textContent = mood(p.pnlPct, p.rows.length > 0 || !!state.stake);
+  document.getElementById("addr-short").textContent = shortAddr(state.address);
+  let html = `<button class="row" onclick="openReceive()">${icon("USD")}<div class="main"><div class="t">Наличные</div><div class="s">Свободно для сделок</div></div>
+              <div class="side num"><div class="t">${money(state.cash)}</div><div class="s muted">USD</div></div></button>`;
   for (const r of p.rows) {
     const c = BY[r.s];
-    html += `<button class="row" onclick="openCoin('${r.s}')"><div class="logo">${c.e}</div>
-      <div class="main"><div class="t">${c.name}</div><div class="s">${qty(r.s, r.h.amount)} · ${pct(r.q.ch)}</div></div>
-      <div class="side"><div class="t">${money(r.value)}</div><div class="s">${signed(r.pnl)}</div></div></button>`;
+    html += `<button class="row" onclick="openCoin('${r.s}')">${icon(r.s)}
+      <div class="main"><div class="t">${c.name}</div><div class="s num">${qty(r.s, r.h.amount)} · ${pct(r.q.ch)}</div></div>
+      <div class="side num"><div class="t">${money(r.value)}</div><div class="s">${signed(r.pnl)}</div></div></button>`;
   }
   document.getElementById("assets").innerHTML = html;
+
+  const st = state.stake;
+  document.getElementById("stake-card").innerHTML = st
+    ? `<button class="row" onclick="openStake()">${icon("TON")}<div class="main"><div class="t">TON в стейкинге</div>
+         <div class="s num">${qty("TON", st.amount)} · <span class="up">+${qty("TON", stakeEarned()).replace(" TON", "")} TON заработано</span></div></div>
+         <div class="side num"><div class="t">${money(p.staked)}</div><div class="s up">${(STAKE_APY * 100).toFixed(1)}% годовых</div></div></button>`
+    : `<button class="row" onclick="openStake()"><div class="coin" style="--c1:#0a6fc2;--c2:#5ec8ff"><span>🔒</span></div>
+         <div class="main"><div class="t">Стейкинг TON</div><div class="s">Положи монеты под ${(STAKE_APY * 100).toFixed(1)}% годовых</div></div>
+         <div class="side"><div class="t muted">›</div></div></button>`;
 }
 function renderMarket() {
-  document.getElementById("market-sub").textContent = board ? `Обновлено ${new Date(board.at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}` : "";
+  document.getElementById("market-sub").textContent = board ? `обновлено ${new Date(board.at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}` : "";
   if (!board) { document.getElementById("market").innerHTML = '<div class="empty">Загружаю цены…</div>'; return; }
   document.getElementById("market").innerHTML = COINS.filter(c => board.quotes[c.s]).map(c => {
     const q = board.quotes[c.s], h = state.holdings[c.s];
-    return `<button class="row" onclick="openCoin('${c.s}')"><div class="logo">${c.e}</div>
-      <div class="main"><div class="t">${c.name}</div><div class="s">${c.s}${h ? " · " + qty(c.s, h.amount) : ""}</div></div>
-      <div class="side"><div class="t">${money(q.usd)}</div><div class="s">${pct(q.ch)}</div></div></button>`;
+    return `<button class="row" onclick="openCoin('${c.s}')">${icon(c.s)}
+      <div class="main"><div class="t">${c.name}</div><div class="s num">${c.s}${h ? " · " + qty(c.s, h.amount) : ""}</div></div>
+      <div class="side num"><div class="t">${money(q.usd)}</div><div class="s">${pct(q.ch)}</div></div></button>`;
   }).join("");
 }
-function renderCoin(p) {
+function renderCoin() {
   const c = BY[coin], q = board && board.quotes[coin], h = state.holdings[coin];
-  document.getElementById("c-logo").textContent = c.e;
+  const logo = document.getElementById("c-logo"); logo.style.setProperty("--c1", c.c1); logo.style.setProperty("--c2", c.c2); logo.firstElementChild.textContent = c.e;
   document.getElementById("c-name").textContent = `${c.name} · ${coin}`;
   document.getElementById("c-price").textContent = q ? money(q.usd) : "—";
   document.getElementById("c-tag").textContent = c.tag;
   document.getElementById("c-sell").disabled = !(h && h.amount > 0);
-  document.getElementById("periods").innerHTML = PERIODS.map(([d, l]) =>
-    `<button class="${d === days ? "on" : ""}" onclick="setDays(${d})">${l}</button>`).join("");
+  document.getElementById("c-stake").style.display = coin === "TON" ? "" : "none";
+  document.getElementById("periods").innerHTML = PERIODS.map(([d, l]) => `<button class="${d === days ? "on" : ""}" onclick="setDays(${d})">${l}</button>`).join("");
   let stats = q ? `<div class="stat"><span class="k">За 24 часа</span><span>${pct(q.ch)}</span></div>` : "";
   if (h && h.amount > 0 && q) {
     const value = h.amount * q.usd, pnl = value - h.invested;
@@ -501,45 +620,71 @@ function renderCoin(p) {
   drawChart();
 }
 function setDays(d) { days = d; haptic("light"); renderCoin(); }
+const SIDE = { buy: ["Покупка", "🟢"], sell: ["Продажа", "🔴"], swap: ["Обмен", "⇄"], send: ["Перевод", "↗"], receive: ["Пополнение", "↙"], stake: ["Стейкинг", "🔒"], unstake: ["Вывод из стейкинга", "🔓"] };
 function renderHistory() {
   const el = document.getElementById("history");
-  if (!state.trades.length) { el.innerHTML = '<div class="empty">Сделок пока нет. Загляни на рынок.</div>'; return; }
-  el.innerHTML = state.trades.slice(0, 50).map(t => {
-    const c = BY[t.s], when = new Date(t.at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-    return `<div class="row"><div class="logo">${c.e}</div>
-      <div class="main"><div class="t">${t.side === "buy" ? "Покупка" : "Продажа"} ${c.name}</div><div class="s">${qty(t.s, t.amount)} · ${when}</div></div>
-      <div class="side"><div class="t ${t.side === "buy" ? "" : "up"}">${t.side === "buy" ? "−" : "+"}${money(t.total)}</div>
-      <div class="s">${t.side === "sell" ? signed(t.pnl) : `<span class="muted">по ${money(t.price)}</span>`}</div></div></div>`;
+  if (!state.trades.length) { el.innerHTML = '<div class="empty">Операций пока нет. Загляни на рынок.</div>'; return; }
+  el.innerHTML = state.trades.slice(0, 60).map(t => {
+    const [name, ic] = SIDE[t.side] || [t.side, "•"];
+    const when = new Date(t.at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    let title = `${name} ${t.s === "USD" ? "USD" : BY[t.s].name}`, sub = `${qty(t.s, t.amount)} · ${when}`, right = money(t.total), rsub = "";
+    if (t.side === "swap") { title = `Обмен ${t.s} → ${t.to}`; sub = `${qty(t.s, t.amount)} → ${qty(t.to, t.got)} · ${when}`; rsub = t.s !== "USD" ? signed(t.pnl) : ""; }
+    if (t.side === "sell") { right = "+" + right; rsub = signed(t.pnl); }
+    if (t.side === "buy" || t.side === "send") right = "−" + right;
+    if (t.side === "send") sub = `${qty(t.s, t.amount)} → ${esc(t.to.length > 14 ? shortAddr(t.to) : t.to)} · ${when}`;
+    if (t.side === "receive") { right = "+" + right; sub = `от ${esc(t.from)} · ${when}`; }
+    if (t.side === "unstake") rsub = `<span class="up">+${qty("TON", t.earned)}</span>`;
+    return `<div class="row"><div class="coin sm" style="--c1:#1c1c22;--c2:#3a3a44"><span>${ic}</span></div>
+      <div class="main"><div class="t">${title}</div><div class="s num">${sub}</div></div>
+      <div class="side num"><div class="t ${t.side === "sell" || t.side === "receive" ? "up" : ""}">${right}</div><div class="s">${rsub}</div></div></div>`;
   }).join("");
 }
 function renderSettings(p) {
-  document.getElementById("seg-cur").innerHTML = Object.entries(CUR).map(([k, s]) =>
-    `<button class="${k === state.settings.currency ? "on" : ""}" onclick="setSetting('currency','${k}')">${s} ${k.toUpperCase()}</button>`).join("");
-  document.getElementById("seg-days").innerHTML = PERIODS.map(([d, l]) =>
-    `<button class="${d === state.settings.days ? "on" : ""}" onclick="setSetting('days',${d})">${l}</button>`).join("");
+  document.getElementById("seg-cur").innerHTML = Object.entries(CUR).map(([k, s]) => `<button class="${k === state.settings.currency ? "on" : ""}" onclick="setSetting('currency','${k}')">${s} ${k.toUpperCase()}</button>`).join("");
+  document.getElementById("seg-days").innerHTML = PERIODS.map(([d, l]) => `<button class="${d === state.settings.days ? "on" : ""}" onclick="setSetting('days',${d})">${l}</button>`).join("");
   document.getElementById("badges").innerHTML = BADGES.map(([e, t, f]) => `<span class="badge ${f(state) ? "" : "off"}">${e} ${t}</span>`).join("");
   document.getElementById("st-trades").textContent = state.trades.length;
   document.getElementById("st-start").textContent = money(START_CASH);
-  document.getElementById("st-result").innerHTML = board ? signed(p.total - START_CASH) : "—";
+  document.getElementById("st-topups").textContent = `${state.topups || 0} × ${money(TOPUP)}`;
+  document.getElementById("st-result").innerHTML = board ? signed(p.total - START_CASH - (state.topups || 0) * TOPUP) : "—";
 }
 function setSetting(k, v) { state.settings[k] = v; save(); haptic("light"); render(); }
 function resetAccount() {
-  ask("Обнулить демо-счёт? Монеты и история сотрутся.", ok => {
+  ask("Обнулить демо-счёт? Монеты, стейкинг и история сотрутся.", ok => {
     if (!ok) return;
-    state = Object.assign(load(), { cash: START_CASH, holdings: {}, trades: [] });
+    state = Object.assign(load(), { cash: START_CASH, holdings: {}, trades: [], stake: null, topups: 0 });
     save(); haptic("success"); toast("Счёт обнулён"); go("wallet");
   });
 }
+function copyAddr() {
+  const a = state.address;
+  const done = () => { haptic("success"); toast("Адрес скопирован"); };
+  if (navigator.clipboard) navigator.clipboard.writeText(a).then(done, () => toast(a));
+  else toast(a);
+}
+
+/* ---------------- 3D-наклон карточки ---------------- */
+(function tilt() {
+  const el = document.getElementById("hero");
+  const move = e => {
+    const r = el.getBoundingClientRect(), p = e.touches ? e.touches[0] : e;
+    const x = (p.clientX - r.left) / r.width - .5, y = (p.clientY - r.top) / r.height - .5;
+    el.style.transform = `rotateX(${(-y * 10).toFixed(2)}deg) rotateY(${(x * 12).toFixed(2)}deg)`;
+  };
+  const reset = () => { el.style.transform = ""; };
+  el.addEventListener("mousemove", move); el.addEventListener("mouseleave", reset);
+  el.addEventListener("touchmove", move, { passive: true }); el.addEventListener("touchend", reset);
+})();
 
 /* ---------------- график ---------------- */
 let chartPts = null, chartHover = null;
 async function drawChart() {
-  const cv = document.getElementById("chart"), sym = coin, d = days;
+  const sym = coin, d = days;
   document.getElementById("ch-left").textContent = "Загружаю…"; document.getElementById("ch-right").textContent = "";
   const pts = await fetchChart(sym, d);
-  if (sym !== coin || d !== days) return;         // пользователь уже ушёл
+  if (sym !== coin || d !== days) return;
   chartPts = pts; chartHover = null;
-  if (!pts) { document.getElementById("ch-left").textContent = "График недоступен"; paintChart(); return; }
+  if (!pts) { document.getElementById("ch-left").textContent = "График недоступен"; }
   paintChart();
 }
 function paintChart() {
@@ -551,15 +696,13 @@ function paintChart() {
   const rate = board && board.fx[state.settings.currency] || 1;
   const ys = chartPts.map(p => p[1] * rate), xs = chartPts.map(p => p[0]);
   const min = Math.min(...ys), max = Math.max(...ys), span = max - min || 1;
-  const x0 = xs[0], x1 = xs[xs.length - 1];
-  const padT = 14, padB = 22, padR = 4;
+  const x0 = xs[0], x1 = xs[xs.length - 1], padT = 14, padB = 22, padR = 4;
   const X = t => padR + (t - x0) / (x1 - x0) * (W - padR * 2);
   const Y = v => padT + (1 - (v - min) / span) * (H - padT - padB);
-  const up = ys[ys.length - 1] >= ys[0];
-  const col = up ? "#39D98A" : "#FF5C5C";
+  const up = ys[ys.length - 1] >= ys[0], col = up ? "#34e59a" : "#ff5d6c";
 
   const grad = ctx.createLinearGradient(0, padT, 0, H - padB);
-  grad.addColorStop(0, col + "44"); grad.addColorStop(1, col + "00");
+  grad.addColorStop(0, col + "55"); grad.addColorStop(1, col + "00");
   ctx.beginPath(); ctx.moveTo(X(xs[0]), Y(ys[0]));
   for (let i = 1; i < xs.length; i++) ctx.lineTo(X(xs[i]), Y(ys[i]));
   ctx.lineTo(X(x1), H - padB); ctx.lineTo(X(x0), H - padB); ctx.closePath();
@@ -567,9 +710,11 @@ function paintChart() {
 
   ctx.beginPath(); ctx.moveTo(X(xs[0]), Y(ys[0]));
   for (let i = 1; i < xs.length; i++) ctx.lineTo(X(xs[i]), Y(ys[i]));
-  ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.stroke();
+  ctx.shadowColor = col; ctx.shadowBlur = 14;
+  ctx.strokeStyle = col; ctx.lineWidth = 2.2; ctx.lineJoin = "round"; ctx.stroke();
+  ctx.shadowBlur = 0;
 
-  ctx.fillStyle = "#7C8797"; ctx.font = "11px -apple-system, Segoe UI, Roboto, sans-serif";
+  ctx.fillStyle = "#8b90a0"; ctx.font = "11px -apple-system, Segoe UI, Roboto, sans-serif";
   ctx.textAlign = "left"; ctx.fillText(fmtTime(x0), padR, H - 6);
   ctx.textAlign = "right"; ctx.fillText(fmtTime(x1), W - padR, H - 6);
   ctx.textAlign = "center"; ctx.fillText(fmtTime((x0 + x1) / 2), W / 2, H - 6);
@@ -577,10 +722,10 @@ function paintChart() {
   const cur = state.settings.currency;
   if (chartHover != null) {
     const i = chartHover, x = X(xs[i]), y = Y(ys[i]);
-    ctx.strokeStyle = "#2B3644"; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+    ctx.strokeStyle = "rgba(255,255,255,.18)"; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
     ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, H - padB); ctx.stroke(); ctx.setLineDash([]);
-    ctx.beginPath(); ctx.arc(x, y, 4.5, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
-    ctx.strokeStyle = "#10161F"; ctx.lineWidth = 2; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+    ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.stroke();
     document.getElementById("ch-left").textContent = new Date(xs[i]).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
     document.getElementById("ch-right").textContent = money(chartPts[i][1], cur);
   } else {
@@ -600,8 +745,7 @@ function fmtTime(t) {
   const move = e => {
     if (!chartPts) return;
     const r = cv.getBoundingClientRect(), px = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
-    const frac = Math.max(0, Math.min(1, (px - 4) / (r.width - 8)));
-    chartHover = Math.round(frac * (chartPts.length - 1)); paintChart();
+    chartHover = Math.round(Math.max(0, Math.min(1, (px - 4) / (r.width - 8))) * (chartPts.length - 1)); paintChart();
     if (e.cancelable) e.preventDefault();
   };
   const leave = () => { chartHover = null; paintChart(); };
@@ -611,61 +755,185 @@ function fmtTime(t) {
   window.addEventListener("resize", () => { if (screen === "coin") paintChart(); });
 })();
 
-/* ---------------- торговля ---------------- */
-function openTrade(side) {
-  const q = board && board.quotes[coin];
-  if (!q) return toast("Нет цены, попробуй позже");
-  const h = state.holdings[coin];
-  if (side === "sell" && !(h && h.amount > 0)) return toast(`У тебя нет ${coin}`);
-  if (side === "buy" && state.cash < MIN_TRADE) return toast("Наличных не осталось");
-  trade = { side, sym: coin };
-  const c = BY[coin];
-  document.getElementById("sh-title").textContent = `${side === "buy" ? "Купить" : "Продать"} ${c.name}`;
-  document.getElementById("sh-hint").textContent = side === "buy"
-    ? `По ${money(q.usd)} за 1 ${coin} · свободно ${money(state.cash)}`
-    : `По ${money(q.usd)} за 1 ${coin} · у тебя ${qty(coin, h.amount)}`;
-  document.getElementById("sh-unit").textContent = side === "buy" ? "$" : coin;
-  const pctChips = base => [25, 50, 100].map(p => [p < 100 ? p + "%" : "Всё", base * p / 100]);
-  const chips = side === "buy"
-    ? [50, 100, 500, 1000].filter(v => v <= state.cash).map(v => [`$${v}`, v]).concat(pctChips(state.cash))
-    : pctChips(h.amount);
-  document.getElementById("sh-chips").innerHTML = chips.map(([l, v]) => `<button onclick="setAmount(${v})">${l}</button>`).join("");
-  const inp = document.getElementById("sh-input"); inp.value = ""; previewTrade();
-  const btn = document.getElementById("sh-confirm"); btn.className = "btn " + side; btn.textContent = side === "buy" ? "Купить" : "Продать";
+/* ---------------- шторки ---------------- */
+function openSheet(kind, html, data) {
+  sheet = Object.assign({ kind }, data || {});
+  document.getElementById("sheet-body").innerHTML = html;
   document.getElementById("sheet-bg").classList.add("open"); document.getElementById("sheet").classList.add("open");
   haptic("light");
-  setTimeout(() => inp.focus(), 250);
+}
+function closeSheet() {
+  sheet = null;
+  document.getElementById("sheet-bg").classList.remove("open"); document.getElementById("sheet").classList.remove("open");
+  if (document.activeElement) document.activeElement.blur();
+}
+function assetOptions(selected, withUsd) {
+  const list = (withUsd ? [CASH] : []).concat(COINS);
+  return list.map(c => `<option value="${c.s}" ${c.s === selected ? "selected" : ""}>${c.e} ${c.s}</option>`).join("");
+}
+function ownedOptions(selected) {
+  const list = [CASH].concat(COINS.filter(c => state.holdings[c.s] && state.holdings[c.s].amount > 0));
+  return list.map(c => `<option value="${c.s}" ${c.s === selected ? "selected" : ""}>${c.e} ${c.s}</option>`).join("");
+}
+function balanceOf(sym) { return sym === "USD" ? state.cash : (state.holdings[sym] ? state.holdings[sym].amount : 0); }
+function chipsHtml(sym, extraUsd) {
+  const bal = balanceOf(sym);
+  let chips = [25, 50, 100].map(p => [p < 100 ? p + "%" : "Всё", bal * p / 100]);
+  if (extraUsd) chips = [50, 100, 500, 1000].filter(v => v <= bal).map(v => [`$${v}`, v]).concat(chips);
+  return chips.map(([l, v]) => `<button onclick="setAmount(${v})">${l}</button>`).join("");
 }
 function setAmount(v) {
-  const side = trade.side;
-  document.getElementById("sh-input").value = side === "buy" ? (Math.floor(v * 100) / 100).toString() : v.toFixed(BY[trade.sym].d + 2).replace(/\.?0+$/, "");
-  previewTrade();
+  const inp = document.getElementById("sh-amount"); if (!inp) return;
+  const sym = sheet.sym || sheet.from || "USD";
+  const d = sym === "USD" ? 2 : BY[sym].d + 2;
+  inp.value = (Math.floor(v * 10 ** d) / 10 ** d).toString();
+  previewSheet();
 }
-function previewTrade() {
-  if (!trade) return;
-  const q = board.quotes[trade.sym], v = parseNum(document.getElementById("sh-input").value);
-  const l = document.getElementById("sh-prev-l"), r = document.getElementById("sh-prev-r"), err = document.getElementById("sh-err");
-  err.textContent = "";
-  if (!(v > 0)) { l.textContent = ""; r.textContent = ""; return; }
-  if (trade.side === "buy") { l.innerHTML = `Получишь <b>${qty(trade.sym, v / q.usd)}</b>`; r.innerHTML = `Спишется <b>${money(v)}</b>`; }
-  else { l.innerHTML = `Отдашь <b>${qty(trade.sym, v)}</b>`; r.innerHTML = `Получишь <b>${money(v * q.usd)}</b>`; }
+function fail(msg) { const e = document.getElementById("sh-err"); if (e) e.textContent = msg; haptic("error"); }
+function done(msg) { closeSheet(); haptic("success"); toast(msg); render(); }
+
+/* покупка / продажа */
+function openTrade(side) {
+  const q = board && board.quotes[coin]; if (!q) return toast("Нет цены, попробуй позже");
+  const h = state.holdings[coin];
+  if (side === "sell" && !(h && h.amount > 0)) return toast(`У тебя нет ${coin}`);
+  if (side === "buy" && state.cash < MIN_TRADE) return toast("Наличных не осталось — загляни в «Получить»");
+  const c = BY[coin];
+  openSheet("trade", `
+    <h2>${side === "buy" ? "Купить" : "Продать"} ${c.name}</h2>
+    <div class="hint">По ${money(q.usd)} за 1 ${coin} · ${side === "buy" ? "свободно " + money(state.cash) : "у тебя " + qty(coin, h.amount)}</div>
+    <div class="field"><div class="lbl"><span>${side === "buy" ? "Сумма" : "Количество"}</span></div>
+      <div class="in"><input id="sh-amount" inputmode="decimal" placeholder="0" oninput="previewSheet()"><span class="unit">${side === "buy" ? "USD" : coin}</span></div></div>
+    <div class="chips">${chipsHtml(side === "buy" ? "USD" : coin, side === "buy")}</div>
+    <div class="preview" id="sh-preview"></div><div class="err" id="sh-err"></div>
+    <button class="btn ${side}" style="width:100%" onclick="confirmSheet()">${side === "buy" ? "Купить" : "Продать"}</button>`,
+    { side, sym: coin });
+  setTimeout(() => document.getElementById("sh-amount").focus(), 250);
 }
-function confirmTrade() {
-  if (!trade) return;
-  const v = parseNum(document.getElementById("sh-input").value), q = board.quotes[trade.sym];
-  const err = trade.side === "buy" ? buy(trade.sym, v, q.usd) : sell(trade.sym, v, q.usd);
-  if (err) { document.getElementById("sh-err").textContent = err; haptic("error"); return; }
-  const t = state.trades[0];
-  const msg = t.side === "buy"
-    ? `Куплено ${qty(t.s, t.amount)}`
-    : `Продано ${qty(t.s, t.amount)} · ${t.pnl >= 0 ? "+" : "−"}${money(Math.abs(t.pnl))}`;
-  closeTrade(); haptic("success"); toast(msg);
-  render();
+
+/* обмен */
+function openSwap(fromSym) {
+  if (!board) return toast("Нет цен, попробуй позже");
+  const from = fromSym && balanceOf(fromSym) > 0 ? fromSym : "USD";
+  const to = from === "TON" ? "BTC" : "TON";
+  openSheet("swap", `
+    <h2>Обмен</h2><div class="hint">Меняем по текущему курсу, без комиссии — это демо.</div>
+    <div class="field"><div class="lbl"><span>Отдаю</span><span id="sw-bal"></span></div>
+      <div class="in"><input id="sh-amount" inputmode="decimal" placeholder="0" oninput="previewSheet()">
+      <label class="picker">${icon(from, "sm")}<select id="sw-from" onchange="swapPick()">${ownedOptions(from)}</select></label></div></div>
+    <div class="swap-arrow"><button onclick="swapFlip()">⇅</button></div>
+    <div class="field"><div class="lbl"><span>Получаю</span><span id="sw-rate"></span></div>
+      <div class="in"><input id="sw-got" readonly placeholder="0" style="color:var(--muted)">
+      <label class="picker">${icon(to, "sm")}<select id="sw-to" onchange="swapPick()">${assetOptions(to, true)}</select></label></div></div>
+    <div class="chips" id="sw-chips"></div>
+    <div class="err" id="sh-err"></div>
+    <button class="btn primary" style="width:100%" onclick="confirmSheet()">Обменять</button>`, { from, to });
+  swapPick();
 }
-function closeTrade() {
-  trade = null;
-  document.getElementById("sheet-bg").classList.remove("open"); document.getElementById("sheet").classList.remove("open");
-  document.getElementById("sh-input").blur();
+function swapPick() {
+  sheet.from = document.getElementById("sw-from").value; sheet.to = document.getElementById("sw-to").value;
+  document.querySelector("#sw-from").previousElementSibling.outerHTML = icon(sheet.from, "sm");
+  document.querySelector("#sw-to").previousElementSibling.outerHTML = icon(sheet.to, "sm");
+  document.getElementById("sw-bal").textContent = "доступно " + qty(sheet.from, balanceOf(sheet.from));
+  document.getElementById("sw-chips").innerHTML = chipsHtml(sheet.from, false);
+  previewSheet();
+}
+function swapFlip() {
+  const f = sheet.from, t = sheet.to;
+  if (balanceOf(t) <= 0) return toast(`У тебя нет ${t}`);
+  document.getElementById("sw-from").innerHTML = ownedOptions(t);
+  document.getElementById("sw-to").innerHTML = assetOptions(f, true);
+  document.getElementById("sh-amount").value = "";
+  swapPick();
+}
+
+/* перевод */
+function openSend(sym) {
+  if (!board) return toast("Нет цен, попробуй позже");
+  const s = sym && balanceOf(sym) > 0 ? sym : "USD";
+  openSheet("send", `
+    <h2>Отправить</h2><div class="hint">Перевод внутри песочницы: средства спишутся, получатель условный.</div>
+    <div class="field"><div class="lbl"><span>Кому</span></div>
+      <div class="in"><input id="sh-to" class="text" placeholder="Адрес UQ… или @username" autocomplete="off"></div></div>
+    <div class="field"><div class="lbl"><span>Сколько</span><span id="sw-bal"></span></div>
+      <div class="in"><input id="sh-amount" inputmode="decimal" placeholder="0" oninput="previewSheet()">
+      <label class="picker">${icon(s, "sm")}<select id="sw-from" onchange="sendPick()">${ownedOptions(s)}</select></label></div></div>
+    <div class="chips" id="sw-chips"></div>
+    <div class="preview" id="sh-preview"></div><div class="err" id="sh-err"></div>
+    <button class="btn primary" style="width:100%" onclick="confirmSheet()">Отправить</button>`, { sym: s });
+  sendPick();
+}
+function sendPick() {
+  sheet.sym = document.getElementById("sw-from").value;
+  document.querySelector("#sw-from").previousElementSibling.outerHTML = icon(sheet.sym, "sm");
+  document.getElementById("sw-bal").textContent = "доступно " + qty(sheet.sym, balanceOf(sheet.sym));
+  document.getElementById("sw-chips").innerHTML = chipsHtml(sheet.sym, false);
+  previewSheet();
+}
+
+/* получить */
+function openReceive() {
+  const a = state.address;
+  openSheet("receive", `
+    <h2>Получить</h2><div class="hint">Твой демо-адрес. В песочнице на него ничего не придёт — но кран ниже работает.</div>
+    <img class="qr" alt="QR" src="https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=0&data=${encodeURIComponent("ton://transfer/" + a)}">
+    <div class="addr-box">${a}</div>
+    <div class="grid2" style="margin-top:12px">
+      <button class="btn ghost" onclick="copyAddr()">⧉ Скопировать</button>
+      <button class="btn primary" onclick="topup(); done('+' + money(${TOPUP}) + ' на счёт')">💧 Кран +$${TOPUP}</button>
+    </div>`);
+}
+
+/* стейкинг */
+function openStake() {
+  const st = state.stake, h = state.holdings.TON, free = h ? h.amount : 0;
+  openSheet("stake", `
+    <h2>Стейкинг TON</h2><div class="hint">${(STAKE_APY * 100).toFixed(1)}% годовых, начисляется каждую секунду. Вывести можно в любой момент.</div>
+    ${st ? `<div class="card num"><div class="stake-hero">${icon("TON", "lg")}<div><div class="big">${qty("TON", st.amount + stakeEarned())}</div>
+            <div class="muted" style="font-size:13px">заработано <span class="up">+${qty("TON", stakeEarned())}</span> · ${money((st.amount + stakeEarned()) * price("TON"))}</div></div></div></div>` : ""}
+    <div class="field"><div class="lbl"><span>Застейкать</span><span>свободно ${qty("TON", free)}</span></div>
+      <div class="in"><input id="sh-amount" inputmode="decimal" placeholder="0" oninput="previewSheet()"><span class="unit">TON</span></div></div>
+    <div class="chips">${chipsHtml("TON", false)}</div>
+    <div class="preview" id="sh-preview"></div><div class="err" id="sh-err"></div>
+    <div class="grid2" style="margin:0">
+      <button class="btn primary" onclick="confirmSheet()" ${free > 0 ? "" : "disabled"}>Застейкать</button>
+      <button class="btn ghost" onclick="doUnstake()" ${st ? "" : "disabled"}>Вывести всё</button>
+    </div>`, { sym: "TON" });
+}
+function doUnstake() { const e = unstake(); if (e) return fail(e); done("TON возвращены в кошелёк"); }
+
+/* предпросмотр и подтверждение — общие для всех шторок */
+function previewSheet() {
+  if (!sheet) return;
+  const inp = document.getElementById("sh-amount"), v = inp ? parseNum(inp.value) : NaN;
+  const err = document.getElementById("sh-err"); if (err) err.textContent = "";
+  const pv = document.getElementById("sh-preview");
+  if (sheet.kind === "swap") {
+    const got = document.getElementById("sw-got"), pf = price(sheet.from), pt = price(sheet.to);
+    document.getElementById("sw-rate").textContent = pf && pt ? `1 ${sheet.from} = ${qty(sheet.to, pf / pt)}` : "";
+    got.value = v > 0 && pf && pt ? qty(sheet.to, v * pf / pt).replace(" " + sheet.to, "") : "";
+    return;
+  }
+  if (!pv) return;
+  if (!(v > 0)) { pv.innerHTML = ""; return; }
+  const p = price(sheet.sym);
+  if (sheet.kind === "trade") pv.innerHTML = sheet.side === "buy" ? `Получишь <b>${qty(sheet.sym, v / p)}</b>` : `Получишь <b>${money(v * p)}</b>`;
+  if (sheet.kind === "send") pv.innerHTML = `Спишется <b>${qty(sheet.sym, v)}</b> ≈ ${money(v * p)}`;
+  if (sheet.kind === "stake") pv.innerHTML = `≈ ${money(v * p)} · доход за год <b>+${qty("TON", v * STAKE_APY)}</b>`;
+}
+function confirmSheet() {
+  if (!sheet) return;
+  const v = parseNum(document.getElementById("sh-amount").value);
+  if (!(v > 0)) return fail("Введи число больше нуля.");
+  let e;
+  if (sheet.kind === "trade") {
+    e = sheet.side === "buy" ? buy(sheet.sym, v) : sell(sheet.sym, v);
+    if (!e) { const t = state.trades[0]; return done(t.side === "buy" ? `Куплено ${qty(t.s, t.amount)}` : `Продано ${qty(t.s, t.amount)} · ${t.pnl >= 0 ? "+" : "−"}${money(Math.abs(t.pnl))}`); }
+  }
+  if (sheet.kind === "swap") { e = swap(sheet.from, sheet.to, v); if (!e) { const t = state.trades[0]; return done(`${qty(t.s, t.amount)} → ${qty(t.to, t.got)}`); } }
+  if (sheet.kind === "send") { e = send(sheet.sym, v, document.getElementById("sh-to").value); if (!e) return done(`Отправлено ${qty(sheet.sym, v)}`); }
+  if (sheet.kind === "stake") { e = stake(v); if (!e) return done(`В стейкинге ещё ${qty("TON", v)}`); }
+  fail(e || "Не вышло.");
 }
 
 /* ---------------- служебное ---------------- */
@@ -683,8 +951,7 @@ function haptic(kind) {
   try { kind === "light" ? tg.HapticFeedback.impactOccurred("light") : tg.HapticFeedback.notificationOccurred(kind); } catch (e) {}
 }
 async function refresh(force) {
-  await fetchBoard(force);
-  render();
+  await fetchBoard(force); render();
   if (force) { haptic("light"); toast(offline ? "Биржа не отвечает" : "Цены обновлены"); }
 }
 
@@ -692,17 +959,26 @@ async function refresh(force) {
 (async function init() {
   if (tg) {
     tg.ready(); tg.expand();
-    try { tg.setHeaderColor("#10161F"); tg.setBackgroundColor("#10161F"); } catch (e) {}
+    try { tg.setHeaderColor("#000000"); tg.setBackgroundColor("#000000"); } catch (e) {}
     tg.BackButton.onClick(back);
     loadCloud();
   }
   render();
   await refresh(false);
-  // Прямые ссылки: #market, #history, #settings, #coin=TON
   const hash = location.hash.slice(1);
+  if (hash.startsWith("seed") && board) {   // служебный режим для проверки вёрстки: данные не сохраняются
+    save = () => {};
+    buy("TON", 1500); buy("BTC", 2000); buy("ETH", 800); stake(300);
+    swap("ETH", "SOL", 0.1); send("USD", 120, "@friend"); topup();
+    state.trades[0].at -= 3600e3 * 5; state.stake.since -= 86400e3 * 40;
+    const target = hash.split(":")[1] || "wallet";
+    target.startsWith("coin=") ? openCoin(target.slice(5)) : go(target);
+    return;
+  }
   if (hash.startsWith("coin=") && BY[hash.slice(5)]) openCoin(hash.slice(5));
   else if (["market", "history", "settings"].includes(hash)) go(hash);
   setInterval(() => refresh(false), PRICE_TTL + 5000);
+  setInterval(() => { if (screen === "wallet" && state.stake && !sheet) renderWallet(portfolio()); }, 10000);
 })();
 </script>
 </body>
