@@ -1,0 +1,25 @@
+# Blueprint для Render (https://render.com): один бесплатный web-сервис — бот + API + Mini App.
+# В панели Render: New → Blueprint → выбрать репозиторий; секреты (sync: false) спросит при создании.
+services:
+  - type: web
+    name: karman
+    runtime: python
+    plan: free
+    region: frankfurt          # базу в Supabase создавай в том же регионе (eu-central-1)
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: BOT_TOKEN
+        sync: false            # токен от @BotFather
+      - key: DATABASE_URL
+        sync: false            # строка подключения Postgres (Supabase → Connect → Session pooler)
+      - key: WEBAPP_URL
+        sync: false            # адрес этого же сервиса, например https://karman.onrender.com/
+      - key: KEEPALIVE_URL
+        sync: false            # тот же адрес + health: бесплатный Render засыпает без запросов

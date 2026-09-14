@@ -1,0 +1,10 @@
+# секреты и локальное состояние — в репозиторий не попадают
+.env
+*.db
+*.log
+webapp_url.txt
+
+.venv/
+__pycache__/
+*.pyc
+tools/cloudflared.exe
